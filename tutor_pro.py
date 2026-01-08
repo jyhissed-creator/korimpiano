@@ -1,95 +1,179 @@
 import streamlit as st
+import streamlit.components.v1 as components
 
-# Configuración de la página con tu marca
-st.set_page_config(page_title="KORYMpiano by JYHISSED", layout="wide", page_icon="🎹")
+# ---------------- CONFIGURACIÓN ----------------
+st.set_page_config(
+    page_title="KORYMpiano by JYHISSED",
+    layout="wide",
+    page_icon="🎹"
+)
 
-# --- ESTILO PERSONALIZADO ---
+# ---------------- ESTILOS ----------------
 st.markdown("""
-    <style>
-    .main { background-color: #f5f7f9; }
-    .stButton>button { width: 100%; border-radius: 5px; height: 3em; background-color: #4CAF50; color: white; }
-    .creadora { font-size: 1.2em; color: #6a1b9a; font-weight: bold; text-align: center; margin-bottom: 20px; }
-    .arpegio-box { background-color: #e1f5fe; border-left: 5px solid #03a9f4; padding: 10px; border-radius: 5px; margin-top: 5px; }
-    </style>
-    """, unsafe_allow_html=True)
+<style>
+.main { background-color: #f5f7f9; }
 
-# --- LÓGICA MUSICAL ---
-NOTAS = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
+.creadora-header {
+    font-size: 2.5em;
+    color: #6a1b9a;
+    font-weight: bold;
+    text-align: center;
+}
+.sub-header {
+    font-size: 1.2em;
+    color: #4a148c;
+    text-align: center;
+    margin-bottom: 20px;
+}
 
-def obtener_notas_acorde(base):
-    # Lógica simple para obtener 1ra, 3ra y 5ta (Arpegio básico mayor)
-    idx = NOTAS.index(base)
-    tercera = NOTAS[(idx + 4) % 12]
-    quinta = NOTAS[(idx + 7) % 12]
-    octava = base
-    return [base, tercera, quinta, octava]
+.piano {
+    display: flex;
+    position: relative;
+    height: 220px;
+    margin: 30px auto;
+}
 
-def transportar(acorde, semitonos):
-    try:
-        a = acorde.strip().capitalize()
-        base = a[0]
-        if len(a) > 1 and a[1] in ['#', 'b', 'B']:
-            base = a[:2].replace('b', '#').replace('B', '#')
-        idx = NOTAS.index(base)
-        nueva = NOTAS[(idx + semitonos) % 12]
-        return nueva + a[len(base):]
-    except: return acorde
+.white {
+    width: 60px;
+    height: 220px;
+    background: white;
+    border: 1px solid #000;
+    z-index: 1;
+    text-align: center;
+    line-height: 200px;
+    font-weight: bold;
+}
 
-# --- CRÉDITOS EN LA BARRA LATERAL ---
-st.sidebar.title("KORYM Tech")
-st.sidebar.markdown("<div class='creadora'>Creado por: JYHISSED (KORYM)</div>", unsafe_allow_html=True)
+.black {
+    width: 40px;
+    height: 140px;
+    background: black;
+    position: absolute;
+    margin-left: -20px;
+    z-index: 2;
+}
 
-# --- OPCIÓN DE ARPEGIO Y BLUETOOTH ---
-st.sidebar.write("---")
-st.sidebar.subheader("🎚️ Ajustes Avanzados")
-modo_arpegio = st.sidebar.toggle("Activar Modo Arpegio", help="Muestra el orden de las notas para tocar arpegiado")
-conectividad = st.sidebar.selectbox("Conectividad:", ["Teclado Local", "Bluetooth MIDI (Beta)"])
+.key.midi-active {
+    background: #2196F3 !important;
+    color: white;
+}
+.black.midi-active {
+    background: #1976D2 !important;
+}
+</style>
+""", unsafe_allow_html=True)
 
-opcion = st.sidebar.radio("Herramienta:", ["🎹 Piano Simple", "🎓 Tutor de Canciones Pro"])
+# ---------------- HEADER ----------------
+st.markdown("<div class='creadora-header'>🎹 KORYMpiano</div>", unsafe_allow_html=True)
+st.markdown("<div class='sub-header'>Desarrollado por JYHISSED · KORYM Tech</div>", unsafe_allow_html=True)
 
-if opcion == "🎹 Piano Simple":
-    st.title("🎹 Piano Básico KORYM")
-    st.subheader(f"Bienvenida al piano de JYHISSED")
-    nota = st.selectbox("Elige una nota:", NOTAS)
-    
-    if modo_arpegio:
-        notas_arp = obtener_notas_acorde(nota)
-        st.info(f"✨ Arpegio de {nota}: " + " → ".join(notas_arp))
-    
-    teclas_grandes = "".join([f"<div style='display:inline-block; border:2px solid black; width:60px; height:200px; background-color:{'#4CAF50' if n == nota else 'white'}; text-align:center; padding-top:160px;'><b>{n}</b></div>" for n in ['C','D','E','F','G','A','B']])
-    st.markdown(teclas_grandes, unsafe_allow_html=True)
+# ---------------- TECLADO VIRTUAL ----------------
+def teclado_virtual():
+    html = """
+    <div class="piano">
+        <div class="key white" id="C" onclick="play(261.63)">C</div>
+        <div class="key black" id="C#" style="left:45px" onclick="play(277.18)"></div>
 
-else:
-    st.title("🎼 Tutor de Canciones Profesional")
-    with st.expander("⚙️ CONFIGURACIÓN", expanded=True):
-        video_url = st.text_input("Link de YouTube:", "https://youtu.be/Xyuuv5co7ko")
-        col1, col2 = st.columns(2)
-        with col1: tono_orig = st.selectbox("Tono original:", NOTAS, index=5)
-        with col2: tono_nvo = st.selectbox("Transportar a:", NOTAS, index=6)
-        letra_raw = st.text_area("Acordes:", "F Bb C C-Bb-C")
+        <div class="key white" id="D" onclick="play(293.66)">D</div>
+        <div class="key black" id="D#" style="left:105px" onclick="play(311.13)"></div>
 
-    dif = NOTAS.index(tono_nvo) - NOTAS.index(tono_orig)
-    if video_url: st.video(video_url)
-    
-    st.header(f"🎶 Guía en {tono_nvo}")
-    acordes_detectados = [a for a in letra_raw.replace('\n', ' ').split(' ') if a]
-    cols = st.columns(len(acordes_detectados))
-    
-    for i, bloque in enumerate(acordes_detectados):
-        with cols[i]:
-            for sa in bloque.split('-'):
-                at = transportar(sa, dif)
-                st.button(at, key=f"{at}_{i}_{sa}")
-                
-                # Visualización de Arpegio
-                if modo_arpegio:
-                    base_nota = at[0] if len(at)==1 or at[1] not in ['#','b'] else at[:2]
-                    notas_a = obtener_notas_acorde(base_nota)
-                    st.markdown(f"""<div class='arpegio-box'><b>Arpegio:</b><br>{' - '.join(notas_a)}</div>""", unsafe_allow_html=True)
-                
-                st.caption(f"🫲 Izq (Bajo): {at[0]}")
-                teclas = "".join([f"<div style='display:inline-block; border:1px solid black; width:20px; height:50px; background-color:{'#4CAF50' if n == at[0] else 'white'};'></div>" for n in ['C','D','E','F','G','A','B']])
-                st.markdown(teclas, unsafe_allow_html=True)
+        <div class="key white" id="E" onclick="play(329.63)">E</div>
 
-st.sidebar.write("---")
-st.sidebar.caption("© 2024 KORYMpiano - JYHISSED.")
+        <div class="key white" id="F" onclick="play(349.23)">F</div>
+        <div class="key black" id="F#" style="left:225px" onclick="play(369.99)"></div>
+
+        <div class="key white" id="G" onclick="play(392.00)">G</div>
+        <div class="key black" id="G#" style="left:285px" onclick="play(415.30)"></div>
+
+        <div class="key white" id="A" onclick="play(440.00)">A</div>
+        <div class="key black" id="A#" style="left:345px" onclick="play(466.16)"></div>
+
+        <div class="key white" id="B" onclick="play(493.88)">B</div>
+    </div>
+
+    <script>
+    function play(freq){
+        let ctx = new (window.AudioContext || window.webkitAudioContext)();
+        let osc = ctx.createOscillator();
+        let gain = ctx.createGain();
+        osc.frequency.value = freq;
+        osc.type = "sine";
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 1);
+        osc.stop(ctx.currentTime + 1);
+    }
+    </script>
+    """
+    components.html(html, height=260)
+
+st.subheader("🎹 Teclado Virtual Interactivo")
+teclado_virtual()
+
+# ---------------- MODO DE APRENDIZAJE ----------------
+modo_aprendizaje = st.selectbox(
+    "🧠 ¿Cómo quieres aprender?",
+    [
+        "Muy fácil (principiante)",
+        "Con arpegios",
+        "Mano derecha",
+        "Mano izquierda",
+        "Teoría musical",
+        "Modo adoración / acompañamiento"
+    ]
+)
+
+# ---------------- MIDI BLUETOOTH ----------------
+def conectar_midi():
+    html = """
+    <button onclick="connectMIDI()">🎹 Conectar Piano Bluetooth</button>
+    <p id="status"></p>
+
+    <script>
+    const notas = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+
+    function midiToNote(midi){
+        return notas[midi % 12];
+    }
+
+    function connectMIDI(){
+        navigator.requestMIDIAccess().then(access => {
+            document.getElementById("status").innerText = "🎹 Piano conectado";
+
+            for (let input of access.inputs.values()){
+                input.onmidimessage = function(msg){
+                    let note = msg.data[1];
+                    let velocity = msg.data[2];
+                    let noteName = midiToNote(note);
+                    let key = document.getElementById(noteName);
+
+                    if (!key) return;
+
+                    if (velocity > 0){
+                        key.classList.add("midi-active");
+                    } else {
+                        key.classList.remove("midi-active");
+                    }
+                }
+            }
+        }).catch(() => {
+            document.getElementById("status").innerText = "❌ No se pudo conectar";
+        });
+    }
+    </script>
+    """
+    components.html(html, height=120)
+
+st.subheader("🔗 Conecta tu piano Bluetooth")
+conectar_midi()
+
+# ---------------- AUTORÍA ----------------
+st.markdown("""
+### 👩‍🎹 Creadora  
+**JYHISSED**  
+*KORYM Tech*  
+Desarrolladora de **KORYMpiano**
+""")
+
+st.sidebar.caption("© KORYMpiano by JYHISSED · KORYM Tech")
