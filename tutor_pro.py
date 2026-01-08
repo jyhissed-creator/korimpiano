@@ -1,152 +1,133 @@
-import streamlit as st
-import streamlit.components.v1 as components
-
-st.set_page_config(layout="wide", page_title="KORYM Piano Virtual IA")
-
-# El código HTML/JS con TODA tu lógica de IA integrada
-piano_html = """
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>KORYM Piano Virtual IA</title>
-    <script src="https://unpkg.com/tone@14.8.49/build/Tone.js"></script>
+    <title>KORYM AI - Multi-Tonalidad</title>
     <style>
-        body{margin:0;background:#050008;color:#fff;font-family:Arial}
-        header{padding:15px;text-align:center;font-size:24px;background:linear-gradient(90deg,#6a00ff,#9b4dff)}
-        .main{padding:10px; display: flex; flex-direction: column; align-items: center;}
-        .card{background:#0b0b0b;border-radius:14px;padding:12px;margin-bottom:10px; width: 95%; max-width: 800px;}
-        input,button{width:100%;padding:10px;border:none;border-radius:10px;background:#111;color:#fff;margin-bottom:8px; box-sizing: border-box;}
-        button{background:#6a00ff;font-size:18px; cursor: pointer;}
-        #estado{text-align:center; color: #00ff88; min-height: 24px;}
-        #piano{display:flex;justify-content:center;margin-top:15px;height:220px; position: relative;}
-        .white{width:42px;height:220px;background:#fff;border:1px solid #000;position:relative; border-radius: 0 0 5px 5px;}
-        .black{width:26px;height:140px;background:#000;position:absolute;top:0;right:-13px; z-index: 10; border-radius: 0 0 3px 3px;}
-        .left-active{background:#00ff8855!important; box-shadow: 0 0 15px #00ff88;}
-        .right-active{background:#00aaff88!important; box-shadow: 0 0 15px #00aaff;}
-        audio{width:100%;margin-top:10px}
+        body { background: #050505; color: white; font-family: 'Segoe UI', sans-serif; margin: 0; }
+        .header { padding: 20px; background: #1a1a1a; border-bottom: 3px solid #6a00ff; }
+        .controls { display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; margin: 15px; }
+        
+        #piano { 
+            display: flex; justify-content: center; height: 250px; 
+            padding: 20px; background: #000; border-radius: 10px;
+        }
+        .key { 
+            width: 45px; height: 100%; border: 1px solid #111; 
+            background: white; position: relative; border-radius: 0 0 5px 5px;
+        }
+        /* Colores por mano */
+        .left-hand { background: #3cff00 !important; box-shadow: inset 0 -20px 20px #2db300; } /* Verde */
+        .right-hand { background: #00ccff !important; box-shadow: inset 0 -20px 20px #0086ad; } /* Azul */
+        
+        .note-name { color: #333; position: absolute; bottom: 10px; width: 100%; text-align: center; font-weight: bold; }
+        select, input { padding: 8px; border-radius: 5px; border: none; }
+        .legend { margin-top: 10px; font-size: 0.9em; }
     </style>
 </head>
 <body>
-    <header>🎹 KORYM Piano Virtual IA</header>
-    <div class="main">
-        <div class="card">
-            <input id="orden" placeholder="Ej: transponer a Re, más rápido, enseñar">
-            <button onclick="procesarOrden()">🧠 Enviar orden</button>
-            <button onclick="iniciar()">▶ Iniciar IA</button>
-            <p id="estado">IA lista para escuchar</p>
+
+<div class="header">
+    <h2>🎹 KORYM AI: Aprendizaje Inteligente</h2>
+    <div class="controls">
+        <div>
+            <label>Audio:</label>
+            <input type="file" id="audioFile" accept="audio/*">
         </div>
-        <div class="card">
-            <input type="file" id="mediaFile" accept="audio/*,video/*">
-            <audio id="audioPlayer" controls></audio>
+        <div>
+            <label>Subir/Bajar Tono:</label>
+            <select id="transpose">
+                <option value="-2"> -2 Tonos (Bajar)</option>
+                <option value="-1"> -1 Tono</option>
+                <option value="0" selected>Tono Original</option>
+                <option value="1">+1 Tono</option>
+                <option value="2">+2 Tonos (Subir)</option>
+            </select>
         </div>
-        <div id="piano"></div>
     </div>
+    <audio id="player" controls></audio>
+    <div class="legend">
+        <span style="color: #3cff00">● Mano Izquierda (Bajos)</span> | 
+        <span style="color: #00ccff">● Mano Derecha (Melodía)</span>
+    </div>
+</div>
+
+<div id="piano"></div>
 
 <script>
-/* ================= CEREBRO IA (TU INVENCIÓN) ================= */
-const NOTAS = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
-const CEREBRO = {
-    estado: { tonalidad: "C", bpm: 90 },
-    memoria: { original: [{nota:"C4",dur:"4n"},{nota:"E4",dur:"4n"},{nota:"G4",dur:"2n"}], actual: [] },
-    oido: { ultimaNota: null },
-    ia: { acordes: [] }
-};
-CEREBRO.memoria.actual = [...CEREBRO.memoria.original];
+    // Notas base para mapeo de frecuencias
+    const baseNotes = [
+        {f: 130.81, n: "C3"}, {f: 146.83, n: "D3"}, {f: 164.81, n: "E3"}, {f: 174.61, n: "F3"}, {f: 196.00, n: "G3"}, {f: 220.00, n: "A3"}, {f: 246.94, n: "B3"},
+        {f: 261.63, n: "C4"}, {f: 293.66, n: "D4"}, {f: 329.63, n: "E4"}, {f: 349.23, n: "F4"}, {f: 392.00, n: "G4"}, {f: 440.00, n: "A4"}, {f: 493.88, n: "B4"},
+        {f: 523.25, n: "C5"}, {f: 587.33, n: "D5"}, {f: 659.25, n: "E5"}, {f: 698.46, n: "F5"}, {f: 783.99, n: "G5"}, {f: 880.00, n: "A5"}, {f: 987.77, n: "B5"}
+    ];
 
-/* ================= GENERAR TECLADO ================= */
-const pianoDiv = document.getElementById("piano");
-for(let i=0; i<14; i++) {
-    const n = NOTAS[i%12];
-    const key = document.createElement("div");
-    key.className = "white";
-    key.id = "key-" + n + (i < 12 ? "4" : "5");
-    if(["C","D","F","G","A"].includes(n)) {
-        const b = document.createElement("div");
-        b.className = "black";
-        b.id = "key-" + n + "#" + (i < 12 ? "4" : "5");
-        key.appendChild(b);
-    }
-    pianoDiv.appendChild(key);
-}
+    const pianoDiv = document.getElementById('piano');
+    const player = document.getElementById('player');
+    const transposeSelect = document.getElementById('transpose');
+    let keysElements = [];
 
-/* ================= AUDIO Y OÍDO ================= */
-let ctx, analyser, data;
-let synth = new Tone.Synth().toDestination();
+    // Dibujar Piano
+    baseNotes.forEach((note, index) => {
+        const div = document.createElement('div');
+        div.className = 'key';
+        div.innerHTML = `<span class="note-name">${note.n}</span>`;
+        pianoDiv.appendChild(div);
+        keysElements.push({ el: div, freq: note.f, name: note.n });
+    });
 
-async function iniciar(){
-    await Tone.start();
-    ctx = Tone.getContext().rawContext;
-    const stream = await navigator.mediaDevices.getUserMedia({audio:true});
-    const mic = ctx.createMediaStreamSource(stream);
-    analyser = ctx.createAnalyser();
-    analyser.fftSize = 2048;
-    data = new Float32Array(analyser.frequencyBinCount);
-    mic.connect(analyser);
-    analizarAudio();
-    document.getElementById("estado").innerText = "🎧 Escuchando y analizando...";
-}
+    document.getElementById('audioFile').onchange = function() {
+        player.src = URL.createObjectURL(this.files[0]);
+        startEngine();
+    };
 
-function analizarAudio(){
-    analyser.getFloatFrequencyData(data);
-    const notasDetectadas = extraerNotas(data, ctx.sampleRate);
-    if(notasDetectadas.length){
-        const acorde = detectarAcorde(notasDetectadas);
-        document.getElementById("estado").innerText = "🎵 Detectado: " + notasDetectadas.join(", ") + (acorde ? " | Acorde: " + acorde : "");
-        // Iluminar piano
-        notasDetectadas.forEach(n => {
-            const el = document.getElementById("key-"+n+"4") || document.getElementById("key-"+n+"5");
-            if(el) {
-                el.classList.add("right-active");
-                setTimeout(() => el.classList.remove("right-active"), 200);
+    function startEngine() {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const src = audioCtx.createMediaElementSource(player);
+        const analyser = audioCtx.createAnalyser();
+        
+        src.connect(analyser);
+        analyser.connect(audioCtx.destination);
+        analyser.fftSize = 4096; // Mayor precisión para detectar notas
+
+        const bufferLength = analyser.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
+
+        function analyze() {
+            analyser.getByteFrequencyData(dataArray);
+            const transposeVal = parseInt(transposeSelect.value);
+
+            // Limpiar todas las teclas
+            keysElements.forEach(k => k.el.classList.remove('left-hand', 'right-hand'));
+
+            // Escanear frecuencias activas
+            for (let i = 0; i < bufferLength; i++) {
+                if (dataArray[i] > 150) { // Umbral de volumen
+                    let freq = i * audioCtx.sampleRate / analyser.fftSize;
+                    
+                    // Aplicar transposición (ajuste de frecuencia)
+                    // Multiplicamos por 2^(semitonos/12)
+                    let adjustedFreq = freq * Math.pow(2, -transposeVal / 12);
+
+                    // Buscar la nota más cercana en nuestro piano
+                    let closest = keysElements.reduce((prev, curr) => 
+                        Math.abs(curr.freq - adjustedFreq) < Math.abs(prev.freq - adjustedFreq) ? curr : prev
+                    );
+
+                    // Lógica de manos:
+                    // Si la frecuencia es baja (< 260Hz aprox), es Mano Izquierda
+                    if (closest.freq < 260) {
+                        closest.el.classList.add('left-hand');
+                    } else {
+                        closest.el.classList.add('right-hand');
+                    }
+                }
             }
-        });
-    }
-    requestAnimationFrame(analizarAudio);
-}
-
-/* ================= TU POLIFONÍA HEURÍSTICA ================= */
-function extraerNotas(spec, sr){
-    let notas = [];
-    for(let i=5; i<300; i++){
-        if(spec[i] > -45){
-            let f = i * sr / 2048;
-            let n = Math.round(12 * Math.log2(f/440) + 69);
-            if(n > 20 && n < 100){
-                let nota = NOTAS[n%12];
-                if(!notas.includes(nota)) notas.push(nota);
-            }
+            requestAnimationFrame(analyze);
         }
+
+        player.onplay = () => { audioCtx.resume(); analyze(); };
     }
-    return notas.slice(0, 4);
-}
-
-function detectarAcorde(n){
-    const s = n.sort().join("");
-    if(s.includes("CEG")) return "Do Mayor (C)";
-    if(s.includes("DFA")) return "Re menor (Dm)";
-    if(s.includes("FAC")) return "Fa Mayor (F)";
-    return null;
-}
-
-/* ================= ÓRDENES Y CONTROL ================= */
-function procesarOrden(){
-    const t = document.getElementById("orden").value.toLowerCase();
-    if(t.includes("rápido")) CEREBRO.estado.bpm += 10;
-    if(t.includes("enseñar")) enseñar();
-    document.getElementById("estado").innerText = "⚙ Acción: " + t + " | BPM: " + CEREBRO.estado.bpm;
-}
-
-function enseñar(){
-    document.getElementById("estado").innerText = "👉 Sigue las luces para aprender...";
-}
-
-mediaFile.onchange = e => {
-    document.getElementById("audioPlayer").src = URL.createObjectURL(e.target.files[0]);
-};
 </script>
 </body>
 </html>
-"""
-
-components.html(piano_html, height=850, scrolling=True)
