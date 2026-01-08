@@ -2,131 +2,138 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>KORYM AI - Multi-Tonalidad</title>
+    <title>KORYM AI - Piano Virtual Real</title>
     <style>
-        body { background: #050505; color: white; font-family: 'Segoe UI', sans-serif; margin: 0; }
-        .header { padding: 20px; background: #1a1a1a; border-bottom: 3px solid #6a00ff; }
-        .controls { display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; margin: 15px; }
+        body { background: #0a0a0a; color: white; font-family: 'Segoe UI', sans-serif; margin: 0; overflow-x: hidden; }
+        .header { padding: 20px; background: #111; border-bottom: 4px solid #6a00ff; text-align: center; }
         
-        #piano { 
-            display: flex; justify-content: center; height: 250px; 
-            padding: 20px; background: #000; border-radius: 10px;
+        /* Contenedor del Piano */
+        #piano-container { 
+            position: relative; display: flex; justify-content: center; 
+            padding: 50px 20px; background: #000; margin-top: 20px;
         }
-        .key { 
-            width: 45px; height: 100%; border: 1px solid #111; 
-            background: white; position: relative; border-radius: 0 0 5px 5px;
-        }
-        /* Colores por mano */
-        .left-hand { background: #3cff00 !important; box-shadow: inset 0 -20px 20px #2db300; } /* Verde */
-        .right-hand { background: #00ccff !important; box-shadow: inset 0 -20px 20px #0086ad; } /* Azul */
         
-        .note-name { color: #333; position: absolute; bottom: 10px; width: 100%; text-align: center; font-weight: bold; }
-        select, input { padding: 8px; border-radius: 5px; border: none; }
-        .legend { margin-top: 10px; font-size: 0.9em; }
+        #piano { display: flex; position: relative; height: 280px; }
+
+        /* Teclas Blancas */
+        .key-white { 
+            width: 50px; height: 100%; border: 1px solid #ccc; 
+            background: white; border-radius: 0 0 8px 8px; position: relative; z-index: 1;
+        }
+
+        /* Teclas Negras */
+        .key-black { 
+            width: 30px; height: 160px; background: #222; 
+            margin-left: -15px; margin-right: -15px; z-index: 2; border-radius: 0 0 5px 5px;
+        }
+
+        /* Iluminación por manos */
+        .left-hand { background: #3cff00 !important; box-shadow: 0 0 30px #3cff00; } /* Verde */
+        .right-hand { background: #00ccff !important; box-shadow: 0 0 30px #00ccff; } /* Azul */
+        
+        .note-name { 
+            position: absolute; bottom: 10px; width: 100%; text-align: center; 
+            color: #888; font-size: 12px; font-weight: bold; pointer-events: none;
+        }
+
+        .controls { display: flex; justify-content: center; gap: 15px; margin: 15px; flex-wrap: wrap; }
+        select, input { padding: 10px; border-radius: 5px; border: none; background: #222; color: white; }
+        .legend { font-size: 14px; margin-top: 10px; color: #aaa; }
     </style>
 </head>
 <body>
 
 <div class="header">
-    <h2>🎹 KORYM AI: Aprendizaje Inteligente</h2>
+    <h2>🎹 KORYM AI PIANO</h2>
     <div class="controls">
-        <div>
-            <label>Audio:</label>
-            <input type="file" id="audioFile" accept="audio/*">
-        </div>
-        <div>
-            <label>Subir/Bajar Tono:</label>
-            <select id="transpose">
-                <option value="-2"> -2 Tonos (Bajar)</option>
-                <option value="-1"> -1 Tono</option>
-                <option value="0" selected>Tono Original</option>
-                <option value="1">+1 Tono</option>
-                <option value="2">+2 Tonos (Subir)</option>
-            </select>
-        </div>
+        <input type="file" id="audioFile" accept="audio/*">
+        <select id="transpose">
+            <option value="-2">Bajar -2 Tonos</option>
+            <option value="0" selected>Tono Original</option>
+            <option value="2">Subir +2 Tonos</option>
+        </select>
     </div>
     <audio id="player" controls></audio>
     <div class="legend">
-        <span style="color: #3cff00">● Mano Izquierda (Bajos)</span> | 
-        <span style="color: #00ccff">● Mano Derecha (Melodía)</span>
+        🟩 Izquierda (Bajos) | 🟦 Derecha (Melodía)
     </div>
 </div>
 
-<div id="piano"></div>
+<div id="piano-container">
+    <div id="piano"></div>
+</div>
 
 <script>
-    // Notas base para mapeo de frecuencias
-    const baseNotes = [
-        {f: 130.81, n: "C3"}, {f: 146.83, n: "D3"}, {f: 164.81, n: "E3"}, {f: 174.61, n: "F3"}, {f: 196.00, n: "G3"}, {f: 220.00, n: "A3"}, {f: 246.94, n: "B3"},
-        {f: 261.63, n: "C4"}, {f: 293.66, n: "D4"}, {f: 329.63, n: "E4"}, {f: 349.23, n: "F4"}, {f: 392.00, n: "G4"}, {f: 440.00, n: "A4"}, {f: 493.88, n: "B4"},
-        {f: 523.25, n: "C5"}, {f: 587.33, n: "D5"}, {f: 659.25, n: "E5"}, {f: 698.46, n: "F5"}, {f: 783.99, n: "G5"}, {f: 880.00, n: "A5"}, {f: 987.77, n: "B5"}
+    // Estructura de un piano de 2 octavas con frecuencias
+    const pianoLayout = [
+        {f: 261.63, n: "C", t: "W"}, {f: 277.18, n: "C#", t: "B"},
+        {f: 293.66, n: "D", t: "W"}, {f: 311.13, n: "D#", t: "B"},
+        {f: 329.63, n: "E", t: "W"},
+        {f: 349.23, n: "F", t: "W"}, {f: 369.99, n: "F#", t: "B"},
+        {f: 392.00, n: "G", t: "W"}, {f: 415.30, n: "G#", t: "B"},
+        {f: 440.00, n: "A", t: "W"}, {f: 466.16, n: "A#", t: "B"},
+        {f: 493.88, n: "B", t: "W"},
+        {f: 523.25, n: "C2", t: "W"}, {f: 554.37, n: "C#2", t: "B"},
+        {f: 587.33, n: "D2", t: "W"}, {f: 622.25, n: "D#2", t: "B"},
+        {f: 659.25, n: "E2", t: "W"},
+        {f: 698.46, n: "F2", t: "W"}, {f: 739.99, n: "F#2", t: "B"},
+        {f: 783.99, n: "G2", t: "W"}, {f: 830.61, n: "G#2", t: "B"},
+        {f: 880.00, n: "A2", t: "W"}, {f: 932.33, n: "A#2", t: "B"},
+        {f: 987.77, n: "B2", t: "W"}
     ];
 
     const pianoDiv = document.getElementById('piano');
     const player = document.getElementById('player');
-    const transposeSelect = document.getElementById('transpose');
     let keysElements = [];
 
-    // Dibujar Piano
-    baseNotes.forEach((note, index) => {
+    // Dibujar Piano Real
+    pianoLayout.forEach(note => {
         const div = document.createElement('div');
-        div.className = 'key';
+        div.className = note.t === "W" ? "key-white" : "key-black";
         div.innerHTML = `<span class="note-name">${note.n}</span>`;
         pianoDiv.appendChild(div);
-        keysElements.push({ el: div, freq: note.f, name: note.n });
+        keysElements.push({ el: div, freq: note.f });
     });
 
     document.getElementById('audioFile').onchange = function() {
         player.src = URL.createObjectURL(this.files[0]);
-        startEngine();
+        initAI();
     };
 
-    function startEngine() {
+    function initAI() {
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        const src = audioCtx.createMediaElementSource(player);
+        const source = audioCtx.createMediaElementSource(player);
         const analyser = audioCtx.createAnalyser();
-        
-        src.connect(analyser);
+        analyser.fftSize = 8192; // Alta resolución
+
+        source.connect(analyser);
         analyser.connect(audioCtx.destination);
-        analyser.fftSize = 4096; // Mayor precisión para detectar notas
 
-        const bufferLength = analyser.frequencyBinCount;
-        const dataArray = new Uint8Array(bufferLength);
+        const dataArray = new Uint8Array(analyser.frequencyBinCount);
 
-        function analyze() {
+        function detect() {
             analyser.getByteFrequencyData(dataArray);
-            const transposeVal = parseInt(transposeSelect.value);
+            const transpose = parseInt(document.getElementById('transpose').value);
 
-            // Limpiar todas las teclas
             keysElements.forEach(k => k.el.classList.remove('left-hand', 'right-hand'));
 
-            // Escanear frecuencias activas
-            for (let i = 0; i < bufferLength; i++) {
-                if (dataArray[i] > 150) { // Umbral de volumen
-                    let freq = i * audioCtx.sampleRate / analyser.fftSize;
-                    
-                    // Aplicar transposición (ajuste de frecuencia)
-                    // Multiplicamos por 2^(semitonos/12)
-                    let adjustedFreq = freq * Math.pow(2, -transposeVal / 12);
+            for (let i = 0; i < dataArray.length; i++) {
+                if (dataArray[i] > 180) { // Sensibilidad
+                    let detectedFreq = i * audioCtx.sampleRate / analyser.fftSize;
+                    let transposedFreq = detectedFreq * Math.pow(2, -transpose / 12);
 
-                    // Buscar la nota más cercana en nuestro piano
                     let closest = keysElements.reduce((prev, curr) => 
-                        Math.abs(curr.freq - adjustedFreq) < Math.abs(prev.freq - adjustedFreq) ? curr : prev
+                        Math.abs(curr.freq - transposedFreq) < Math.abs(prev.freq - transposedFreq) ? curr : prev
                     );
 
-                    // Lógica de manos:
-                    // Si la frecuencia es baja (< 260Hz aprox), es Mano Izquierda
-                    if (closest.freq < 260) {
-                        closest.el.classList.add('left-hand');
-                    } else {
-                        closest.el.classList.add('right-hand');
-                    }
+                    // Lógica de manos mejorada
+                    if (closest.freq < 350) closest.el.classList.add('left-hand');
+                    else closest.el.classList.add('right-hand');
                 }
             }
-            requestAnimationFrame(analyze);
+            requestAnimationFrame(detect);
         }
-
-        player.onplay = () => { audioCtx.resume(); analyze(); };
+        player.onplay = () => { audioCtx.resume(); detect(); };
     }
 </script>
 </body>
