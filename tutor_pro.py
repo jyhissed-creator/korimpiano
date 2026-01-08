@@ -1,122 +1,245 @@
-import streamlit as st
+Import streamlit as st
 import streamlit.components.v1 as components
 
-# 1. CONFIGURACIÓN Y MARCA
-st.set_page_config(page_title="KORYMpiano by JYHISSED", layout="wide", page_icon="🎹")
+# ================================
+# 1. ESTILO Y MARCA (KORYM TECH)
+# ================================
+
+st.set_page_config(page_title="KORYMpiano Tutor", layout="wide")
 
 st.markdown("""
 <style>
-    .creadora-header { font-size: 2.5em; color: #6a1b9a; font-weight: bold; text-align: center; }
-    .sub-header { font-size: 1.2em; color: #4a148c; text-align: center; margin-bottom: 20px; }
-    .piano { display: flex; position: relative; height: 200px; margin: 20px auto; justify-content: center; }
-    .white { width: 50px; height: 200px; background: white; border: 1px solid #000; z-index: 1; text-align: center; line-height: 180px; font-weight: bold; }
-    .black { width: 35px; height: 120px; background: black; position: absolute; margin-left: -17px; z-index: 2; }
-    .instruccion-caja { background-color: #f0f2f6; border-left: 5px solid #6a1b9a; padding: 15px; border-radius: 10px; margin: 10px 0; }
+    .creadora { text-align: center; color: #6a1b9a; font-weight: bold; font-size: 2.2em; margin-bottom: 20px; }
+    .status-box { background: #f3e5f5; border-radius: 15px; padding: 20px; border-top: 5px solid #6a1b9a; margin-top: 20px; }
+    .piano-container { display: flex; justify-content: center; background: #222; padding: 20px; border-radius: 10px; }
+    .key { border: 1px solid #000; text-align: center; line-height: 200px; font-weight: bold; transition: 0.2s; user-select: none; font-size: 12px; }
+    .white { width: 50px; height: 180px; background: white; color: #333; }
+    .black { width: 30px; height: 110px; background: black; color: white; margin-left: -15px; margin-right: -15px; z-index: 2; }
+    /* Colores de Guía Visual */
+    .guia-izq { background-color: #bbdefb !important; box-shadow: 0 0 20px #2196f3; color: transparent; }
+    .guia-der { background-color: #c8e6c9 !important; box-shadow: 0 0 20px #4caf50; color: transparent; }
+    .correct { background-color: #ffeb3b !important; box-shadow: 0 0 20px #fbc02d; }
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown("<div class='creadora-header'>🎹 KORYMpiano</div>", unsafe_allow_html=True)
-st.markdown("<div class='sub-header'>Desarrollado por JYHISSED · KORYM Tech</div>", unsafe_allow_html=True)
+st.markdown("<div class='creadora'>🎹 KORYMpiano: Tutor Visual Inteligente</div>", unsafe_allow_html=True)
 
-# 2. LOGICA MUSICAL Y DICCIONARIO DE POSICIONES
-NOTAS = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
+# ================================
+# 2. LÓGICA MUSICAL
+# ================================
 
-# Diccionario para explicar cómo poner las manos
-POSICIONES = {
-    'C': "Do - Mi - Sol", 'C#': "Do# - Fa - Sol#", 'D': "Re - Fa# - La",
-    'D#': "Re# - Sol - La#", 'E': "Mi - Sol# - Si", 'F': "Fa - La - Do",
-    'F#': "Fa# - La# - Do#", 'G': "Sol - Si - Re", 'G#': "Sol# - Do - Re#",
-    'A': "La - Do# - Mi", 'A#': "La# - Re - Fa", 'B': "Si - Re# - Fa#"
+# Acordes con notas de triada
+ACORDES_DATA = {
+    'F#': ['F#', 'A#', 'C#'], 'B': ['B', 'D#', 'F#'], 'C#': ['C#', 'F', 'G#'],
+    'A#m': ['A#', 'C#', 'F'], 'D#m': ['D#', 'F#', 'A#'], 'G#m': ['G#', 'B', 'D#'],
+    'F': ['F', 'A', 'C'], 'Bb': ['A#', 'D', 'F'], 'C': ['C', 'E', 'G'],
+    'Am': ['A', 'C', 'E'], 'Dm': ['D', 'F', 'A'], 'Gm': ['G', 'A#', 'D']
 }
 
-def transportar(acorde, semitonos):
-    try:
-        a = acorde.strip().capitalize()
-        base = a[:2] if len(a) > 1 and a[1] in ['#', 'b'] else a[0]
-        base = base.replace('b', '#')
-        idx = NOTAS.index(base)
-        nueva = NOTAS[(idx + semitonos) % 12]
-        return nueva + a[len(base):]
-    except: return acorde
+# ================================
+# 3. BARRA LATERAL
+# ================================
 
-# 3. BARRA LATERAL (TUTOR DE YOUTUBE)
-st.sidebar.header("🎓 TUTOR PRO")
-video_url = st.sidebar.text_input("Link de YouTube:", "https://youtu.be/Xyuuv5co7ko")
-tono_orig = st.sidebar.selectbox("Tono original:", NOTAS, index=0)
-tono_nvo = st.sidebar.selectbox("Transportar a:", NOTAS, index=0)
-letra_raw = st.sidebar.text_area("Escribe los acordes (separados por espacio):", "C G Am F")
+st.sidebar.header("🎓 CONFIGURACIÓN")
+video_url = st.sidebar.text_input("YouTube URL:", "https://youtu.be/Xyuuv5co7ko")
+acordes_raw = st.sidebar.text_area("Acordes de la canción (separados por espacio):", "F# B C# A#m D#m G#m")
 
-# 4. TECLADO VIRTUAL
-def teclado_virtual():
-    html = """
-    <div class="piano">
-        <div class="key white" id="C">C</div> <div class="key black" id="C#" style="left:35px"></div>
-        <div class="key white" id="D" style="margin-left:5px">D</div> <div class="key black" id="D#" style="left:90px"></div>
-        <div class="key white" id="E" style="margin-left:5px">E</div>
-        <div class="key white" id="F" style="margin-left:5px">F</div> <div class="key black" id="F#" style="left:195px"></div>
-        <div class="key white" id="G" style="margin-left:5px">G</div> <div class="key black" id="G#" style="left:250px"></div>
-        <div class="key white" id="A" style="margin-left:5px">A</div> <div class="key black" id="A#" style="left:305px"></div>
-        <div class="key white" id="B" style="margin-left:5px">B</div>
+# ================================
+# 4. VIDEO
+# ================================
+st.video(video_url)
+
+# ================================
+# 5. TECLADO VIRTUAL INTERACTIVO
+# ================================
+
+if 'teclas_izq' not in st.session_state:
+    st.session_state.teclas_izq = []
+if 'teclas_der' not in st.session_state:
+    st.session_state.teclas_der = []
+
+def mostrar_piano(izq, der):
+    def clase_guia(n):
+        if n in izq:
+            return "guia-izq"
+        elif n in der:
+            return "guia-der"
+        else:
+            return ""
+    
+    html_piano = f"""
+    <div class="piano-container">
+        <div class="key white {clase_guia('C')}" id="C">C</div> <div class="key black {clase_guia('C#')}" id="C#">C#</div>
+        <div class="key white {clase_guia('D')}" id="D">D</div> <div class="key black {clase_guia('D#')}" id="D#">D#</div>
+        <div class="key white {clase_guia('E')}" id="E">E</div>
+        <div class="key white {clase_guia('F')}" id="F">F</div> <div class="key black {clase_guia('F#')}" id="F#">F#</div>
+        <div class="key white {clase_guia('G')}" id="G">G</div> <div class="key black {clase_guia('G#')}" id="G#">G#</div>
+        <div class="key white {clase_guia('A')}" id="A">A</div> <div class="key black {clase_guia('A#')}" id="A#">A#</div>
+        <div class="key white {clase_guia('B')}" id="B">B</div>
     </div>
-    """
-    components.html(html, height=230)
-
-teclado_virtual()
-
-# 5. CONECTOR BLUETOOTH
-if st.button("🔗 CONECTAR PIANO BLUETOOTH"):
-    st.balloons()
-    js_midi = """
     <script>
-    navigator.requestMIDIAccess({ bluetooth: true }).then(access => {
-        for (let input of access.inputs.values()){
-            input.onmidimessage = (msg) => {
-                let [type, note, velocity] = msg.data;
-                let noteName = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'][note % 12];
-                let key = window.parent.document.getElementById(noteName);
-                if (key) {
-                    if (type === 144 && velocity > 0) key.style.backgroundColor = "#4CAF50";
-                    else key.style.backgroundColor = key.id.includes('#') ? "black" : "white";
-                }
-            }
-        }
-    });
+    navigator.requestMIDIAccess({{ bluetooth: true }}).then(access => {{
+        for (let input of access.inputs.values()) {{
+            input.onmidimessage = (msg) => {{
+                const [s, n, v] = msg.data;
+                const notas = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+                const tecla = document.getElementById(notas[n % 12]);
+                if (s === 144 && v > 0) tecla.classList.add('correct');
+                else tecla.classList.remove('correct');
+            }};
+        }}
+    }});
     </script>
     """
-    components.html(js_midi, height=0)
+    components.html(html_piano, height=230)
 
-# 6. MOSTRAR CANCIÓN Y ACORDES TRANSPORTADOS
-if video_url:
-    st.video(video_url)
+# ================================
+# 6. BOTONES DE ACORDES
+# ================================
 
-dif = NOTAS.index(tono_nvo) - NOTAS.index(tono_orig)
-st.subheader(f"🎶 Guía para tocar en tono {tono_nvo}:")
+st.markdown("### 🎶 Toca el acorde para ver cómo se hace:")
+lista_ac = acordes_raw.split()
+cols = st.columns(len(lista_ac))
 
-acordes_lista = letra_raw.split()
-cols = st.columns(len(acordes_lista) if len(acordes_lista) > 0 else 1)
+for i, ac in enumerate(lista_ac):
+    if cols[i].button(ac, key=f"btn_{i}"):
+        notas = ACORDES_DATA.get(ac, [])
+        if notas:
+            st.session_state.teclas_izq = [notas[0]]       # mano izquierda toca la raíz
+            st.session_state.teclas_der = notas             # mano derecha toca todo el acorde
 
-# Variable para guardar cuál acorde se hizo clic para mostrar la ayuda
-acorde_seleccionado = None
+mostrar_piano(st.session_state.teclas_izq, st.session_state.teclas_der)
 
-for i, acc in enumerate(acordes_lista):
-    nuevo_acc = transportar(acc, dif)
-    if cols[i % len(cols)].button(nuevo_acc, key=f"btn_{i}"):
-        acorde_seleccionado = nuevo_acc
+# ================================
+# 7. EXPLICACIÓN POR MANO
+# ================================
 
-# 7. EXPLICACIÓN DE MANOS (EL TUTOR)
-if acorde_seleccionado:
-    base = acorde_seleccionado[:2] if len(acorde_seleccionado) > 1 and acorde_seleccionado[1] == '#' else acorde_seleccionado[0]
-    notas_guia = POSICIONES.get(base, "Posición no definida")
-    
-    st.markdown(f"""
-    <div class="instruccion-caja">
-        <h4>👩‍🏫 Cómo tocar el acorde <b>{acorde_seleccionado}</b>:</h4>
-        <p><b>Mano Izquierda (Bajo):</b> Toca la tecla <b>{base}</b> en la parte más grave del piano.</p>
-        <p><b>Mano Derecha (Acorde):</b> Toca estas tres notas juntas: <b>{notas_guia}</b>.</p>
-        <p><i>Tip: Mantén el pedal presionado para que suene más profesional.</i></p>
-    </div>
-    """, unsafe_allow_html=True)
+def explicacion_manos(acorde):
+    notas = ACORDES_DATA.get(acorde, [])
+    if not notas:
+        return "No hay información para este acorde."
+    mano_izq = notas[0]
+    mano_der = " - ".join(notas)
+    texto = f"""
+    👩‍🏫 **Cómo tocar {acorde}:**  
+    - **Mano izquierda (Bajo):** toca la nota **{mano_izq}**, marcando el pulso (1,2,3,4).  
+    - **Mano derecha (Acorde):** toca estas notas juntas: **{mano_der}**.  
+    - **Ritmo sugerido:** izquierda en el primer tiempo, derecha en los 4 tiempos, o arpegio si quieres.
+    """
+    return texto
+
+st.markdown("<div class='status-box'>", unsafe_allow_html=True)
+if st.session_state.teclas_der:
+    # Detectar el acorde activo
+    acorde_actual = None
+    for ac in lista_ac:
+        if ACORDES_DATA.get(ac, []) == st.session_state.teclas_der:
+            acorde_actual = ac
+            break
+    if acorde_actual:
+        st.markdown(explicacion_manos(acorde_actual), unsafe_allow_html=True)
 else:
-    st.info("Haz clic en cualquier acorde de arriba para ver cómo poner las manos.")
+    st.info("Haz clic en un acorde arriba para ver la posición en el piano virtual.")
+st.markdown("</div>", unsafe_allow_html=True)
 
-st.markdown(f"--- \n**Creadora:** JYHISSED | KORYM Tech")
+
+
+
+
+import streamlit as st
+import streamlit.components.v1 as components
+
+# 1. ESTILO Y MARCA (KORYM TECH)
+st.set_page_config(page_title="KORYMpiano Tutor", layout="wide")
+st.markdown("""
+<style>
+    .creadora { text-align: center; color: #6a1b9a; font-weight: bold; font-size: 2.2em; }
+    .status-box { background: #f3e5f5; border-radius: 15px; padding: 20px; border-top: 5px solid #6a1b9a; }
+    .piano-container { display: flex; justify-content: center; background: #222; padding: 20px; border-radius: 10px; }
+    .key { border: 1px solid #000; text-align: center; line-height: 200px; font-weight: bold; transition: 0.2s; user-select: none; font-size: 12px; }
+    .white { width: 50px; height: 180px; background: white; color: #333; }
+    .black { width: 30px; height: 110px; background: black; color: white; margin-left: -17px; margin-right: -17px; z-index: 2; }
+    /* Colores de Guía Visual */
+    .guia-izq { background-color: #bbdefb !important; box-shadow: 0 0 20px #2196f3; } /* AZUL: Mano Izquierda */
+    .guia-der { background-color: #c8e6c9 !important; box-shadow: 0 0 20px #4caf50; } /* VERDE: Mano Derecha */
+    .correct { background-color: #ffeb3b !important; box-shadow: 0 0 20px #fbc02d; } /* AMARILLO: Bluetooth */
+</style>
+""", unsafe_allow_html=True)
+
+st.markdown("<div class='creadora'>🎹 KORYMpiano: Tutor Visual de Manos</div>", unsafe_allow_html=True)
+
+# 2. LÓGICA MUSICAL
+ACORDES_DATA = {
+    'F#': ['F#', 'A#', 'C#'], 'B': ['B', 'D#', 'F#'], 'C#': ['C#', 'F', 'G#'],
+    'A#m': ['A#', 'C#', 'F'], 'D#m': ['D#', 'F#', 'A#'], 'G#m': ['G#', 'B', 'D#'],
+    'F': ['F', 'A', 'C'], 'Bb': ['A#', 'D', 'F'], 'C': ['C', 'E', 'G'],
+    'Am': ['A', 'C', 'E'], 'Dm': ['D', 'F', 'A'], 'Gm': ['G', 'A#', 'D']
+}
+
+# 3. BARRA LATERAL
+st.sidebar.header("🎓 CONFIGURACIÓN")
+video_url = st.sidebar.text_input("YouTube URL:", "https://youtu.be/Xyuuv5co7ko")
+acordes_raw = st.sidebar.text_area("Acordes de la canción:", "F# B C# A#m D#m G#m")
+
+# 4. VIDEO
+st.video(video_url)
+
+# 5. TECLADO VIRTUAL
+if 'teclas_izq' not in st.session_state: st.session_state.teclas_izq = []
+if 'teclas_der' not in st.session_state: st.session_state.teclas_der = []
+
+def mostrar_piano(izq, der):
+    def clase_guia(n):
+        if n in izq: return "guia-izq"
+        if n in der: return "guia-der"
+        return ""
+    
+    html_piano = f"""
+    <div class="piano-container">
+        <div class="key white {clase_guia('C')}" id="C">C</div> <div class="key black {clase_guia('C#')}" id="C#">C#</div>
+        <div class="key white {clase_guia('D')}" id="D">D</div> <div class="key black {clase_guia('D#')}" id="D#">D#</div>
+        <div class="key white {clase_guia('E')}" id="E">E</div>
+        <div class="key white {clase_guia('F')}" id="F">F</div> <div class="key black {clase_guia('F#')}" id="F#">F#</div>
+        <div class="key white {clase_guia('G')}" id="G">G</div> <div class="key black {clase_guia('G#')}" id="G#">G#</div>
+        <div class="key white {clase_guia('A')}" id="A">A</div> <div class="key black {clase_guia('A#')}" id="A#">A#</div>
+        <div class="key white {clase_guia('B')}" id="B">B</div>
+    </div>
+    <script>
+    navigator.requestMIDIAccess({{ bluetooth: true }}).then(access => {{
+        for (let input of access.inputs.values()) {{
+            input.onmidimessage = (msg) => {{
+                const [s, n, v] = msg.data;
+                const notas = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+                const tecla = document.getElementById(notas[n % 12]);
+                if (s === 144 && v > 0) tecla.classList.add('correct');
+                else tecla.classList.remove('correct');
+            }};
+        }}
+    }});
+    </script>
+    """
+    components.html(html_piano, height=230)
+
+# 6. LÓGICA DE BOTONES (RITMO Y TIEMPO)
+st.markdown("### 🎶 Toca el acorde según el ritmo del video:")
+lista_ac = acordes_raw.split()
+cols = st.columns(len(lista_ac))
+
+for i, ac in enumerate(lista_ac):
+    if cols[i].button(ac, key=f"btn_{i}"):
+        # La izquierda toca la raíz, la derecha la triada
+        st.session_state.teclas_der = ACORDES_DATA.get(ac, [])
+        st.session_state.teclas_izq = [st.session_state.teclas_der[0]] if st.session_state.teclas_der else []
+
+mostrar_piano(st.session_state.teclas_izq, st.session_state.teclas_der)
+
+# 7. EXPLICACIÓN DEL TUTOR
+st.markdown("<div class='status-box'>", unsafe_allow_html=True)
+if st.session_state.teclas_der:
+    st.write(f"👩‍🏫 **GUÍA DE EJECUCIÓN:**")
+    st.write(f"🔵 **Mano Izquierda (Bajo):** Toca la tecla **{st.session_state.teclas_izq[0]}**.")
+    st.write(f"🟢 **Mano Derecha (Acorde):** Toca juntas **{' - '.join(st.session_state.teclas_der)}**.")
+    st.write("⏱️ **Ritmo:** Sigue el compás del video y cambia de botón cuando escuches el cambio de armonía.")
+else:
+    st.info("Haz clic en un acorde para ver cómo posicionar tus manos.")
+st.markdown("</div>", unsafe_allow_html=True)
