@@ -1,93 +1,147 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-# 1. CONFIGURACIÓN Y ESTILO PROFESIONAL
-st.set_page_config(page_title="KORYMpiano Universal", layout="wide")
+# 1. CSS AVANZADO: POSICIONAMIENTO REAL DE TECLAS
+st.set_page_config(page_title="KORYMpiano Virtual", layout="wide")
 st.markdown("""
 <style>
-    .creadora { text-align: center; color: #6a1b9a; font-weight: bold; font-size: 2em; margin-bottom: 20px; }
-    .status-box { background: #f3e5f5; border-radius: 15px; padding: 20px; border: 2px solid #6a1b9a; }
-    .piano-wrapper { overflow-x: auto; padding: 20px; background: #1a1a1a; border-radius: 15px; }
-    .piano-container { display: flex; position: relative; width: 600px; height: 180px; margin: 0 auto; }
-    .key { border: 1px solid #000; text-align: center; font-weight: bold; position: relative; cursor: pointer; transition: 0.1s; }
-    .white { width: 50px; height: 170px; background: white; color: #333; z-index: 1; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 10px; border-radius: 0 0 5px 5px; }
-    .black { width: 30px; height: 100px; background: black; color: white; margin-left: -15px; margin-right: -15px; z-index: 2; border-radius: 0 0 3px 3px; font-size: 0.8em; }
-    .active-guide { background-color: #c8e6c9 !important; border-bottom: 10px solid #4caf50; }
-    .midi-pressed { background-color: #ffeb3b !important; transform: translateY(2px); }
-    .perfect { background-color: #ff5722 !important; color: white; }
+    .creadora { text-align: center; color: #6a1b9a; font-weight: bold; font-size: 1.5em; }
+    
+    /* El contenedor que permite deslizar el piano en el celular */
+    .piano-scroll {
+        overflow-x: auto;
+        padding: 20px 10px;
+        background: #1a1a1a;
+        border-radius: 15px;
+        width: 100%;
+    }
+
+    /* Contenedor del piano con tamaño fijo para que no se deforme */
+    .piano-board {
+        position: relative;
+        width: 500px; /* Ancho total del piano */
+        height: 180px;
+        margin: 0 auto;
+        background: #1a1a1a;
+    }
+
+    .key {
+        position: absolute;
+        cursor: pointer;
+        border: 1px solid #000;
+        border-radius: 0 0 5px 5px;
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        font-weight: bold;
+        transition: 0.1s;
+        user-select: none;
+    }
+
+    /* Teclas Blancas */
+    .white {
+        width: 71px; /* 500 / 7 notas blancas aprox */
+        height: 170px;
+        background: white;
+        color: #333;
+        z-index: 1;
+        font-size: 12px;
+        padding-bottom: 10px;
+    }
+
+    /* Teclas Negras (Posicionadas encima) */
+    .black {
+        width: 40px;
+        height: 100px;
+        background: black;
+        color: white;
+        z-index: 2;
+        font-size: 10px;
+        padding-bottom: 5px;
+    }
+
+    /* Colores de guía y presión */
+    .active-guide { background-color: #c8e6c9 !important; border-bottom: 8px solid #4caf50; }
+    .midi-pressed { background-color: #ffeb3b !important; transform: translateY(3px); }
+    .perfect { background-color: #ff5722 !important; color: white !important; }
+
+    /* Botones de acordes estilo cuadrícula móvil */
+    .stButton > button {
+        width: 100%;
+        border-radius: 8px;
+        background: white;
+        border: 2px solid #6a1b9a;
+        color: #6a1b9a;
+        font-weight: bold;
+    }
 </style>
 """, unsafe_allow_html=True)
 
-# 2. MOTOR MUSICAL (Sostiene todas las tonalidades)
+# 2. LÓGICA DE TRANSPORTE
 NOTAS = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
-# Diccionario base para construir cualquier acorde
-MODELO_ACORDES = {
-    'MAYOR': [0, 4, 7], 'MENOR': [0, 3, 7], '7MA': [0, 4, 7, 10]
-}
+MODELO = {'MAYOR': [0, 4, 7], 'MENOR': [0, 3, 7]}
 
-def transportar_y_generar(acorde_texto, semitonos):
-    es_menor = "m" in acorde_texto
-    base = acorde_texto.replace("m", "")
+def generar_acorde(texto, semitonos):
+    es_m = "m" in texto
+    base = texto.replace("m", "").strip()
     if base not in NOTAS: return None
-    
-    # Nueva nota base
-    nueva_pos = (NOTAS.index(base) + semitonos) % 12
-    nueva_base = NOTAS[nueva_pos]
-    
-    # Generar notas del acorde
-    intervalos = MODELO_ACORDES['MENOR' if es_menor else 'MAYOR']
-    notas_acorde = [NOTAS[(nueva_pos + i) % 12] for i in intervalos]
-    
-    return {"nombre": nueva_base + ("m" if es_menor else ""), "notas": notas_acorde}
+    pos = (NOTAS.index(base) + semitonos) % 12
+    notas = [NOTAS[(pos + i) % 12] for i in MODELO['MENOR' if es_m else 'MAYOR']]
+    return {"nombre": NOTAS[pos] + ("m" if es_m else ""), "notas": notas}
 
-# 3. INTERFAZ DE USUARIO
-st.markdown("<div class='creadora'>🎹 KORYMpiano Universal Tutor</div>", unsafe_allow_html=True)
+# 3. INTERFAZ
+st.markdown("<div class='creadora'>🎹 KORYMpiano Virtual</div>", unsafe_allow_html=True)
 
 with st.sidebar:
-    st.header("⚙️ Configuración")
-    url = st.text_input("URL de YouTube:", "https://youtu.be/Xyuuv5co7ko")
-    acordes_raw = st.text_area("Lista de acordes (espaciados):", "F# B C# A#m D#m G#m")
-    tono_actual = st.selectbox("Tono original de la canción:", NOTAS, index=6) # F# por defecto
-    tono_deseado = st.selectbox("Tono para tocar (Transportar a):", NOTAS, index=0) # C por defecto
+    url = st.text_input("YouTube URL", "https://youtu.be/Xyuuv5co7ko")
+    acordes_input = st.text_area("Acordes", "F# B C# A#m D#m G#m")
+    t_orig = st.selectbox("Tono Original", NOTAS, index=6)
+    t_dest = st.selectbox("Transportar a", NOTAS, index=0)
 
-# Diferencia de semitonos
-semitonos = NOTAS.index(tono_deseado) - NOTAS.index(tono_actual)
-
+dif = NOTAS.index(t_dest) - NOTAS.index(t_orig)
 st.video(url)
 
-# 4. BOTONES DINÁMICOS
-if 'acorde_activo' not in st.session_state:
-    st.session_state.acorde_activo = {"nombre": "", "notas": []}
+if 'notas_obj' not in st.session_state: st.session_state.notas_obj = []
 
-st.subheader(f"🎶 Acordes en {tono_deseado}:")
-lista_nombres = acordes_raw.split()
-cols = st.columns(len(lista_nombres) if lista_nombres else 1)
+# Botones de acordes
+lista = acordes_input.split()
+for i in range(0, len(lista), 3):
+    cols = st.columns(3)
+    for j, ac in enumerate(lista[i:i+3]):
+        info = generar_acorde(ac, dif)
+        if info and cols[j].button(info['nombre'], key=f"b{i+j}"):
+            st.session_state.notas_obj = info['notas']
 
-for i, ac in enumerate(lista_nombres):
-    info = transportar_y_generar(ac, semitonos)
-    if info and cols[i].button(info['nombre'], key=f"btn_{i}"):
-        st.session_state.acorde_activo = info
+# 4. EL PIANO VIRTUAL (HTML + JS)
+# Definimos posiciones exactas para que parezca un piano
+posiciones = {
+    'C': 'left:0px', 'C#': 'left:50px', 'D': 'left:71px', 'D#': 'left:125px',
+    'E': 'left:142px', 'F': 'left:213px', 'F#': 'left:265px', 'G': 'left:284px',
+    'G#': 'left:340px', 'A': 'left:355px', 'A#': 'left:415px', 'B': 'left:426px'
+}
 
-# 5. PIANO VIRTUAL CON SONIDO Y MIDI
-notas_js = ",".join(st.session_state.acorde_activo['notas'])
-teclas_html = "".join([f'<div class="key {"black" if "#" in n else "white"} {"active-guide" if n in st.session_state.acorde_activo["notas"] else ""}" id="key-{n}">{n}</div>' for n in NOTAS])
+teclas_html = ""
+for n in NOTAS:
+    tipo = "black" if "#" in n else "white"
+    guia = "active-guide" if n in st.session_state.notas_obj else ""
+    teclas_html += f'<div class="key {tipo} {guia}" id="key-{n}" style="{posiciones[n]}">{n}</div>'
 
-html_final = f"""
+html_piano = f"""
 <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
-<div id="status" style="text-align:center; color:white; background:#6a1b9a; padding:10px; border-radius:5px; margin-bottom:10px; cursor:pointer; font-weight:bold;">
-    🔊 CLIC PARA ACTIVAR AUDIO Y MIDI
+<div id="status" style="text-align:center; color:white; background:#6a1b9a; padding:10px; border-radius:10px; margin-bottom:10px; cursor:pointer; font-family:sans-serif;">
+    👉 TOCA AQUÍ PARA ACTIVAR SONIDO Y MIDI 👈
 </div>
-<div class="piano-wrapper">
-    <div class="piano-container">{teclas_html}</div>
+<div class="piano-scroll">
+    <div class="piano-board">{teclas_html}</div>
 </div>
 <script>
 const synth = new Tone.PolySynth(Tone.Synth).toDestination();
-const objetivos = "{notas_js}".split(",");
+const objetivos = "{",".join(st.session_state.notas_obj)}".split(",");
 const status = document.getElementById('status');
 
 status.addEventListener('click', async () => {{
     await Tone.start();
-    status.innerText = "🎹 AUDIO LISTO - ESPERANDO PIANO BLUETOOTH";
+    status.innerText = "🎹 PIANO VIRTUAL LISTO";
 }});
 
 if (navigator.requestMIDIAccess) {{
@@ -111,16 +165,4 @@ if (navigator.requestMIDIAccess) {{
 }}
 </script>
 """
-components.html(html_final, height=300)
-
-# 6. EXPLICACIÓN POR MANOS
-if st.session_state.acorde_activo['nombre']:
-    notas = st.session_state.acorde_activo['notas']
-    st.markdown(f"""
-    <div class='status-box'>
-        <h3>👩‍🏫 Cómo tocar {st.session_state.acorde_activo['nombre']}:</h3>
-        <p><b>Mano Izquierda (Bajo):</b> Mantén presionada la nota <b>{notas[0]}</b>.</p>
-        <p><b>Mano Derecha (Acorde):</b> Toca al mismo tiempo <b>{', '.join(notas)}</b>.</p>
-        <p><i>Sigue el ritmo del video y presiona los botones para cambiar la guía del piano.</i></p>
-    </div>
-    """, unsafe_allow_html=True)
+components.html(html_piano, height=300)
