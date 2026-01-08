@@ -1,4 +1,4 @@
-Import streamlit as st
+import streamlit as st
 
 # Configuración de la página con tu marca
 st.set_page_config(page_title="KORYMpiano by JYHISSED", layout="wide", page_icon="🎹")
