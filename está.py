@@ -1,136 +1,104 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-st.set_page_config(layout="wide", page_title="KORYM.PIANO Studio")
+st.set_page_config(layout="wide", page_title="KORYM.PIANO Coach")
 
 st.markdown("""
     <style>
     .stApp { background-color: #050008; }
-    footer {visibility: hidden;}
-    iframe { border-radius: 20px; box-shadow: 0 0 40px #00ff8844; border: 1px solid #1a1a1a; }
+    iframe { border-radius: 20px; box-shadow: 0 0 50px #6a00ff22; border: 1px solid #1a1a1a; }
     </style>
 """, unsafe_allow_html=True)
 
-piano_lyrics_html = """
+piano_coach_html = """
 <!DOCTYPE html>
-<html lang="es">
+<html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script src="https://unpkg.com/tone@14.8.49/build/Tone.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
     <style>
         body { background: #050008; color: white; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 15px; text-align: center; }
-        .creator-tag { font-size: 11px; color: #6a00ff; letter-spacing: 4px; font-weight: bold; margin-bottom: 5px; }
-        .system-title { font-size: 24px; font-weight: 800; color: #fff; margin-bottom: 20px; }
+        .header { color: #6a00ff; font-size: 11px; letter-spacing: 4px; font-weight: bold; margin-bottom: 5px; }
+        .panel { background: #000; border: 1px solid #00ff88; border-radius: 15px; padding: 20px; max-width: 800px; margin: 0 auto; }
         
-        .main-container { display: flex; flex-direction: column; gap: 20px; max-width: 900px; margin: 0 auto; }
-        .input-area { background: #000; border: 1px solid #00ff88; border-radius: 15px; padding: 20px; }
+        textarea { width: 95%; height: 100px; background: #0a0a0a; color: #00ff88; border: 1px solid #333; border-radius: 8px; padding: 12px; margin-bottom: 15px; font-size: 14px; }
         
-        textarea { width: 95%; height: 120px; background: #0a0a0a; color: #00ff88; border: 1px solid #333; border-radius: 8px; padding: 10px; font-size: 14px; margin-bottom: 15px; resize: none; outline: none; }
+        .controls { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-bottom: 15px; }
+        button { padding: 12px 20px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        .btn-init { background: #00ff88; color: #000; width: 100%; margin-bottom: 10px; }
+        .btn-practice { background: #6a00ff; color: white; }
         
-        .controls { display: flex; gap: 15px; justify-content: center; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
-        select, button { padding: 12px 20px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; }
-        
-        /* BOTÓN DE DESBLOQUEO CRÍTICO */
-        .btn-unlock { background: #00ff88; color: #000; box-shadow: 0 0 20px #00ff8888; animation: pulse 2s infinite; }
-        .btn-play { background: #6a00ff; color: white; }
-        .btn-stop { background: #ff3333; color: white; }
+        #lyrics-coach { background: #070707; border-radius: 10px; padding: 20px; min-height: 60px; border-left: 5px solid #6a00ff; text-align: left; font-size: 18px; margin: 15px 0; }
+        .current-chord { color: #00ff88; font-weight: bold; text-decoration: underline; }
 
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }
-        
-        #lyrics-display { background: #0a0a0a; border-radius: 10px; padding: 20px; min-height: 80px; border-left: 4px solid #6a00ff; text-align: left; line-height: 1.6; color: #eee; white-space: pre-wrap; margin: 10px 0; font-size: 18px; }
-        .chord-highlight { color: #00ff88; font-weight: bold; font-family: monospace; background: #00ff8811; padding: 2px 4px; border-radius: 4px; }
-        
-        #piano-container { display: flex; justify-content: center; overflow-x: auto; padding: 20px 0; }
-        #piano { display: flex; position: relative; height: 160px; }
-        .key { position: relative; border: 1px solid #222; transition: 0.1s; }
-        .white { width: 35px; height: 100%; background: #fff; border-radius: 0 0 5px 5px; z-index: 1; }
-        .black { width: 22px; height: 100px; background: #222; margin-left: -11px; margin-right: -11px; z-index: 2; border-radius: 0 0 3px 3px; }
-        .active { background: #00ff88 !important; box-shadow: 0 0 20px #00ff88 !important; }
+        #piano { display: flex; justify-content: center; height: 160px; overflow-x: auto; padding: 20px 0; }
+        .key { border: 1px solid #222; position: relative; transition: 0.2s; }
+        .white { width: 40px; height: 100%; background: #fff; border-radius: 0 0 5px 5px; }
+        .black { width: 26px; height: 100px; background: #222; margin-left: -13px; margin-right: -13px; z-index: 2; border-radius: 0 0 3px 3px; }
+        .active { background: #00ff88 !important; box-shadow: 0 0 25px #00ff88 !important; }
+        .guide { background: #6a00ff !important; box-shadow: 0 0 20px #6a00ff !important; }
     </style>
 </head>
 <body>
+    <div class="header">YHISSED JIMÉNEZ PRESENTA</div>
+    <h2>PIANO COACH PRO</h2>
 
-    <div class="creator-tag">YHISSED JIMÉNEZ PRESENTA</div>
-    <div class="system-title">KORYM.PIANO STUDIO</div>
+    <button class="btn-init" onclick="init()">⚡ PASO 1: ACTIVAR AUDIO</button>
 
-    <div class="main-container">
-        <div class="input-area">
-            <button id="unlock-btn" class="btn-unlock" onclick="desbloquearAudio()">🔓 1. ACTIVAR AUDIO</button>
-            <br><br>
-            <textarea id="full-song" placeholder="Pega aquí la letra con acordes entre corchetes.&#10;Ejemplo: [C] Hola [G] mundo [Am] musical..."></textarea>
-            
-            <div class="controls">
-                <div>
-                    <span style="font-size: 12px;">TONALIDAD:</span>
-                    <select id="transpose-val">
-                        <option value="0">Tono Original</option>
-                        <option value="2">+1 Tono (Re)</option>
-                        <option value="-2">-1 Tono (Sib)</option>
-                        <option value="1">+1/2 Tono</option>
-                    </select>
-                </div>
-                <button id="play-btn" class="btn-play" onclick="reproducirMusica()" disabled style="opacity:0.5;">2. REPRODUCIR</button>
-                <button class="btn-stop" onclick="detenerTodo()">PARAR</button>
-            </div>
+    <div class="panel">
+        <textarea id="song-input" placeholder="Pega letra con acordes. Ejemplo: [C] Te doy [G] gracias..."></textarea>
+        <div class="controls">
+            <button class="btn-practice" onclick="startCoach()">▶️ EMPEZAR PRÁCTICA</button>
+            <button style="background:#444; color:white;" onclick="stop()">DETENER</button>
         </div>
-
-        <div id="lyrics-display">Esperando activación de audio...</div>
-
-        <div id="piano-container"><div id="piano"></div></div>
     </div>
 
+    <div id="lyrics-coach">La letra aparecerá aquí...</div>
+    <div id="piano"></div>
+
 <script>
-    // Sintetizador con sonido más suave (FMSynth)
-    const synth = new Tone.PolySynth(Tone.FMSynth).toDestination();
+    const synth = new Tone.PolySynth(Tone.Synth).toDestination();
     const notes = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
     const chordsMap = { "M": [0, 4, 7], "m": [0, 3, 7], "7": [0, 4, 7, 10] };
-    const keysData = [];
+    const pianoDiv = document.getElementById('piano');
+    const keysMap = {};
 
-    // Crear Piano
-    const piano = document.getElementById('piano');
-    for (let oct = 3; oct <= 5; oct++) {
+    // Crear Piano (2 octavas)
+    for (let oct = 3; oct <= 4; oct++) {
         notes.forEach(n => {
             const fullNote = n + oct;
             const div = document.createElement('div');
-            div.className = `key ${n.includes("#") ? 'black' : 'white'}`;
-            piano.appendChild(div);
-            keysData.push({ el: div, note: fullNote, simple: n });
+            div.className = `key ${n.includes('#') ? 'black' : 'white'}`;
+            pianoDiv.appendChild(div);
+            keysMap[fullNote] = div;
         });
     }
 
-    // FUNCIÓN CLAVE: Desbloquea el contexto de audio
-    async function desbloquearAudio() {
+    async function init() {
         await Tone.start();
-        console.log("Audio listo");
-        document.getElementById('unlock-btn').innerText = "✅ AUDIO ONLINE";
-        document.getElementById('unlock-btn').classList.remove('btn-unlock');
-        document.getElementById('unlock-btn').style.background = "#444";
-        document.getElementById('unlock-btn').style.color = "#888";
-        document.getElementById('play-btn').disabled = false;
-        document.getElementById('play-btn').style.opacity = "1";
-        document.getElementById('lyrics-display').innerText = "KORYM.PIANO: Listo para procesar letra.";
+        document.querySelector('.btn-init').innerText = "✅ AUDIO CONECTADO";
+        document.querySelector('.btn-init').style.background = "#222";
+        document.querySelector('.btn-init').style.color = "#00ff88";
     }
 
-    function detenerTodo() {
+    function stop() {
         Tone.Transport.stop();
         Tone.Transport.cancel();
-        keysData.forEach(k => k.el.classList.remove('active'));
+        Object.values(keysMap).forEach(k => k.classList.remove('active', 'guide'));
     }
 
-    async function reproducirMusica() {
-        if (Tone.context.state !== 'running') {
-            alert("Presiona el botón ACTIVAR AUDIO primero");
-            return;
-        }
+    function startCoach() {
+        if (Tone.context.state !== 'running') return alert("Activa el audio primero");
+        stop();
         
-        detenerTodo();
-        const rawText = document.getElementById('full-song').value;
-        const shift = parseInt(document.getElementById('transpose-val').value);
+        const input = document.getElementById('song-input').value;
+        const lyricsDiv = document.getElementById('lyrics-coach');
         
-        document.getElementById('lyrics-display').innerHTML = rawText.replace(/\\[(.*?)\\]/g, '<span class="chord-highlight">$1</span>');
+        // Procesar letra para mostrar
+        lyricsDiv.innerHTML = input.replace(/\\[(.*?)\\]/g, '<span class="current-chord">[$1]</span>');
 
-        const matches = [...rawText.matchAll(/\\[(.*?)\\]/g)];
+        const matches = [...input.matchAll(/\\[(.*?)\\]/g)];
         let time = 0;
 
         matches.forEach((match) => {
@@ -141,36 +109,30 @@ piano_lyrics_html = """
 
             let rootIdx = notes.indexOf(root);
             if (rootIdx !== -1) {
-                let transIdx = (rootIdx + shift + 12) % 12;
                 let intervals = chordsMap[type] || chordsMap["M"];
                 
+                // Programar el sonido y la luz de guía
                 intervals.forEach(inter => {
-                    let noteName = notes[(transIdx + inter) % 12];
-                    tocar(noteName + "4", time);
+                    let noteName = notes[(rootIdx + inter) % 12] + "4";
+                    
+                    // Sonido
+                    synth.triggerAttackRelease(noteName, "2n", Tone.now() + time);
+                    
+                    // Guía visual (se ilumina un poco antes y dura más)
+                    setTimeout(() => {
+                        if(keysMap[noteName]) {
+                            keysMap[noteName].classList.add('guide');
+                            setTimeout(() => keysMap[noteName].classList.remove('guide'), 2500);
+                        }
+                    }, time * 1000);
                 });
-                time += 1.8; // Velocidad de los acordes
+                time += 3; // Tiempo más lento para practicar (3 segundos por acorde)
             }
         });
-    }
-
-    function tocar(n, time) {
-        // Disparar sonido
-        synth.triggerAttackRelease(n, "2n", Tone.now() + time);
-        
-        // Disparar visualización
-        const key = keysData.find(k => k.note === n);
-        if(key) {
-            setTimeout(() => {
-                key.el.classList.add('active');
-            }, time * 1000);
-            setTimeout(() => {
-                key.el.classList.remove('active');
-            }, (time * 1000) + 800);
-        }
     }
 </script>
 </body>
 </html>
 """
 
-components.html(piano_lyrics_html, height=900, scrolling=True)
+components.html(piano_coach_html, height=800)
