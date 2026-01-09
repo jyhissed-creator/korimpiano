@@ -3,134 +3,129 @@ import streamlit.components.v1 as components
 
 st.set_page_config(layout="wide", page_title="KORYM AI Piano Virtual")
 
+# Estilo para arreglar la interfaz en móviles
+st.markdown("""
+    <style>
+    .stApp { background-color: #050008; }
+    iframe { border-radius: 15px; box-shadow: 0 0 20px #6a00ff44; }
+    </style>
+""", unsafe_allow_html=True)
+
 piano_ia_html = """
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://unpkg.com/tone@14.8.49/build/Tone.js"></script>
     <style>
-        body { background: #050008; color: white; font-family: 'Segoe UI', sans-serif; margin: 0; }
-        .header { padding: 10px; background: #111; border-bottom: 3px solid #00ff88; text-align: center; }
-        .ia-console { background: #000; border: 2px solid #00ff88; border-radius: 12px; padding: 15px; width: 90%; margin: 10px auto; }
-        #ia-orden { width: 70%; padding: 12px; background: #111; color: #00ff88; border: 1px solid #333; border-radius: 5px; font-size: 16px; outline: none;}
-        .btn-enviar { padding: 12px 25px; background: #00ff88; color: black; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; transition: 0.3s; }
-        .btn-enviar:hover { background: #6a00ff; color: white; }
+        body { background: #050008; color: white; font-family: sans-serif; margin: 0; padding: 10px; text-align: center; }
+        .console { background: #000; border: 2px solid #00ff88; border-radius: 15px; padding: 15px; margin-bottom: 15px; }
+        input { width: 80%; padding: 12px; background: #111; color: #00ff88; border: 1px solid #333; border-radius: 8px; font-size: 18px; margin-bottom: 10px; }
+        button { width: 80%; padding: 12px; background: #6a00ff; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 16px; }
         
-        #piano-container { display: flex; justify-content: center; padding: 20px; background: #000; overflow-x: auto; }
-        #piano { display: flex; height: 220px; position: relative; }
-        .key-white { width: 40px; height: 100%; border: 1px solid #222; background: white; border-radius: 0 0 5px 5px; position: relative; cursor: pointer; transition: 0.1s;}
-        .key-black { width: 26px; height: 130px; background: #222; margin-left: -13px; margin-right: -13px; z-index: 2; border-radius: 0 0 3px 3px; cursor: pointer; transition: 0.1s;}
+        #piano-container { display: flex; justify-content: center; overflow-x: auto; padding-bottom: 20px; background: #000; border-radius: 10px; }
+        #piano { display: flex; position: relative; height: 200px; padding: 10px; }
         
-        .ia-touch { background: #00ff88 !important; box-shadow: 0 0 35px #00ff88 !important; transform: translateY(5px); }
-        .note-label { position: absolute; bottom: 5px; width: 100%; text-align: center; color: #888; font-size: 9px; font-weight: bold; pointer-events: none; }
+        .key { position: relative; border: 1px solid #222; cursor: pointer; transition: 0.1s; }
+        .white { width: 45px; height: 100%; background: white; border-radius: 0 0 5px 5px; z-index: 1; }
+        .black { width: 30px; height: 120px; background: #222; margin-left: -15px; margin-right: -15px; z-index: 2; border-radius: 0 0 3px 3px; }
+        
+        .active { background: #00ff88 !important; box-shadow: 0 0 30px #00ff88 !important; transform: translateY(5px); }
+        .label { position: absolute; bottom: 5px; width: 100%; text-align: center; color: #888; font-size: 10px; pointer-events: none; font-weight: bold; }
     </style>
 </head>
 <body>
 
-<div class="header">
-    <h2 style="margin:0;">🎹 KORYM AI: SONIDO TOTAL</h2>
-    <div class="ia-console">
-        <input type="text" id="ia-orden" placeholder="Ej: 'Toca C4', 'Acorde de Em', 'Escala Mayor'...">
-        <button class="btn-enviar" onclick="ejecutarOrden()">COMANDAR</button>
-        <div id="feedback-ia" style="margin-top:10px; color:#00ff88; font-family:monospace;">IA: Haz clic en cualquier tecla para activar el sonido.</div>
+    <div class="console">
+        <h3 style="margin:0 0 10px 0;">🎹 KORYM AI: REPARADO</h3>
+        <input type="text" id="orden" placeholder="Escribe: C, Bb, Am, C-E-G...">
+        <button onclick="comandar()">EJECUTAR COMANDO</button>
+        <div id="status" style="color:#00ff88; font-family:monospace; margin-top:10px; font-size:14px;">Listo para recibir órdenes exactas.</div>
     </div>
-</div>
 
-<div id="piano-container"><div id="piano"></div></div>
+    <div id="piano-container">
+        <div id="piano"></div>
+    </div>
 
 <script>
-    // 1. MOTOR DE SONIDO (Polifónico para acordes)
-    const synth = new Tone.PolySynth(Tone.Synth, {
-        oscillator: { type: "triangle" },
-        envelope: { attack: 0.05, release: 1 }
-    }).toDestination();
+    const synth = new Tone.PolySynth(Tone.Synth).toDestination();
+    const notes = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+    const keysData = [];
 
-    // 2. GENERACIÓN DE TECLADO (4 Octavas: de C2 a B5)
-    const notesBase = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
-    let keysElements = [];
-    const pianoDiv = document.getElementById('piano');
-
-    for (let i = 0; i < 48; i++) {
-        let name = notesBase[i % 12];
-        let octave = Math.floor(i / 12) + 2;
-        let fullNote = name + octave;
-        let isBlack = name.includes("#");
-        
-        const div = document.createElement('div');
-        div.className = isBlack ? "key-black" : "key-white";
-        div.innerHTML = `<span class="note-label">${fullNote}</span>`;
-        
-        // Tocar al hacer click manual
-        div.onmousedown = () => { 
-            Tone.start();
-            synth.triggerAttack(fullNote); 
-            div.classList.add('ia-touch');
-        };
-        div.onmouseup = () => { 
-            synth.triggerRelease(fullNote); 
-            div.classList.remove('ia-touch');
-        };
-
-        pianoDiv.appendChild(div);
-        keysElements.push({ el: div, name: name, full: fullNote, noteIndex: i % 12 });
+    // Generar 3 octavas exactas (Octavas 3, 4 y 5)
+    const piano = document.getElementById('piano');
+    for (let oct = 3; oct <= 5; oct++) {
+        notes.forEach(n => {
+            const fullNote = n + oct;
+            const isBlack = n.includes("#");
+            const div = document.createElement('div');
+            div.className = `key ${isBlack ? 'black' : 'white'}`;
+            div.dataset.note = fullNote;
+            div.dataset.simple = n;
+            div.innerHTML = `<span class="label">${fullNote}</span>`;
+            
+            div.onmousedown = () => { play(fullNote); div.classList.add('active'); };
+            div.onmouseup = () => div.classList.remove('active');
+            
+            piano.appendChild(div);
+            keysData.push({ el: div, note: fullNote, simple: n });
+        });
     }
 
-    const ACORDES = {
-        "m": [0, 3, 7], "maj": [0, 4, 7], "7": [0, 4, 7, 10], "m7": [0, 3, 7, 10],
-        "maj7": [0, 4, 7, 11], "dim": [0, 3, 6], "aug": [0, 4, 8], "sus4": [0, 5, 7]
-    };
+    function play(n) {
+        Tone.start();
+        synth.triggerAttackRelease(n, "4n");
+    }
 
-    // 3. MOTOR DE RECONOCIMIENTO Y EJECUCIÓN (Visual + Audio)
-    async function ejecutarOrden() {
-        await Tone.start();
-        const rawCmd = document.getElementById('ia-orden').value.toUpperCase();
-        const cmd = rawCmd.replace("ACORDE DE ", "").replace("TOCA ", "").trim();
-        const fb = document.getElementById('feedback-ia');
-        
-        // Limpiar estado anterior
-        keysElements.forEach(k => k.el.classList.remove('ia-touch'));
+    function comandar() {
+        const input = document.getElementById('orden').value.toUpperCase().trim();
+        const status = document.getElementById('status');
+        keysData.forEach(k => k.el.classList.remove('active'));
 
-        // Caso 1: Nota Simple (Ej: "C4")
-        let notaSimple = keysElements.find(k => k.full === cmd || k.name === cmd);
-        if (notaSimple) {
-            notaSimple.el.classList.add('ia-touch');
-            synth.triggerAttackRelease(notaSimple.full, "2n");
-            fb.innerText = "IA: Tocando nota " + notaSimple.full;
-            setTimeout(() => notaSimple.el.classList.remove('ia-touch'), 500);
+        // 1. Diccionario de Acordes
+        const chords = {
+            "M": [0, 4, 7], "m": [0, 3, 7], "7": [0, 4, 7, 10], "MAJ7": [0, 4, 7, 11]
+        };
+
+        // Normalizar Bb a A# para el sistema
+        let search = input.replace("BB", "A#").replace("EB", "D#").replace("AB", "G#").replace("DB", "C#").replace("GB", "F#");
+
+        // Lógica de Notas separadas por guion (C-E-G)
+        if (search.includes("-")) {
+            const parts = search.split("-");
+            parts.forEach(p => {
+                let found = keysData.filter(k => k.simple === p || k.note === p);
+                found.forEach(f => { f.el.classList.add('active'); play(f.note); });
+            });
+            status.innerText = "Tocando secuencia exacta.";
             return;
         }
 
-        // Caso 2: Acordes Universales
-        let raiz = "";
-        let tipo = "maj";
-
-        if (cmd[1] === "#" || cmd[1] === "B") { raiz = cmd.substring(0, 2); tipo = cmd.substring(2) || "maj"; }
-        else { raiz = cmd[0]; tipo = cmd.substring(1) || "maj"; }
-        if (tipo === "M") tipo = "maj";
-
-        let rootIndex = notesBase.indexOf(raiz);
-        if (rootIndex !== -1) {
-            let intervalos = ACORDES[tipo.toLowerCase()] || ACORDES["maj"];
-            let notasParaTocar = [];
-
-            // Buscar las notas en la octava central (Octava 4)
-            keysElements.forEach(k => {
-                intervalos.forEach(inter => {
-                    if (k.noteIndex === (rootIndex + inter) % 12 && k.full.includes("4")) {
-                        k.el.classList.add('ia-touch');
-                        notasParaTocar.push(k.full);
-                    }
-                });
+        // Lógica de Acordes (Am, C, F#m)
+        let root = search[0];
+        if (search[1] === "#") root = search.slice(0, 2);
+        let type = search.replace(root, "") || "M";
+        
+        let rootIdx = notes.indexOf(root);
+        if (rootIdx !== -1) {
+            let intervals = chords[type] || chords["M"];
+            intervals.forEach(interval => {
+                let noteName = notes[(rootIdx + interval) % 12];
+                // Iluminar en la octava 4 (central)
+                let target = keysData.find(k => k.note === noteName + "4");
+                if (target) { target.el.classList.add('active'); play(target.note); }
             });
-
-            if (notasParaTocar.length > 0) {
-                synth.triggerAttackRelease(notasParaTocar, "2n");
-                fb.innerText = "IA: Ejecutando acorde " + raiz + " " + tipo;
-                setTimeout(() => keysElements.forEach(k => k.el.classList.remove('ia-touch')), 1000);
-            }
+            status.innerText = `Acorde de ${root} ${type} ejecutado correctamente.`;
         } else {
-            fb.innerText = "IA: No reconozco esa instrucción musical.";
+            // Nota simple
+            let found = keysData.filter(k => k.simple === search || k.note === search);
+            if (found.length > 0) {
+                found.forEach(f => { f.el.classList.add('active'); play(f.note); });
+                status.innerText = `Nota ${search} activada.`;
+            } else {
+                status.innerText = "Error: Nota o Acorde no reconocido.";
+            }
         }
     }
 </script>
@@ -138,4 +133,4 @@ piano_ia_html = """
 </html>
 """
 
-components.html(piano_ia_html, height=650, scrolling=False)
+components.html(piano_ia_html, height=700, scrolling=False)
