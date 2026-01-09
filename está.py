@@ -1,13 +1,13 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-st.set_page_config(layout="wide", page_title="KORYM.PIANO Lyrics & Chords")
+st.set_page_config(layout="wide", page_title="KORYM.PIANO Studio")
 
 st.markdown("""
     <style>
     .stApp { background-color: #050008; }
     footer {visibility: hidden;}
-    iframe { border-radius: 20px; box-shadow: 0 0 40px #6a00ff44; border: 1px solid #1a1a1a; }
+    iframe { border-radius: 20px; box-shadow: 0 0 40px #00ff8844; border: 1px solid #1a1a1a; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -26,15 +26,19 @@ piano_lyrics_html = """
         .main-container { display: flex; flex-direction: column; gap: 20px; max-width: 900px; margin: 0 auto; }
         .input-area { background: #000; border: 1px solid #00ff88; border-radius: 15px; padding: 20px; }
         
-        textarea { width: 95%; height: 150px; background: #0a0a0a; color: #00ff88; border: 1px solid #333; border-radius: 8px; padding: 10px; font-size: 14px; margin-bottom: 15px; resize: vertical; outline: none; }
+        textarea { width: 95%; height: 120px; background: #0a0a0a; color: #00ff88; border: 1px solid #333; border-radius: 8px; padding: 10px; font-size: 14px; margin-bottom: 15px; resize: none; outline: none; }
         
         .controls { display: flex; gap: 15px; justify-content: center; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
         select, button { padding: 12px 20px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; }
         
-        .btn-play { background: #00ff88; color: #000; }
+        /* BOTÓN DE DESBLOQUEO CRÍTICO */
+        .btn-unlock { background: #00ff88; color: #000; box-shadow: 0 0 20px #00ff8888; animation: pulse 2s infinite; }
+        .btn-play { background: #6a00ff; color: white; }
         .btn-stop { background: #ff3333; color: white; }
+
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }
         
-        #lyrics-display { background: #0a0a0a; border-radius: 10px; padding: 20px; min-height: 100px; border-left: 4px solid #6a00ff; text-align: left; line-height: 1.6; color: #eee; white-space: pre-wrap; margin: 10px 0; font-size: 18px; }
+        #lyrics-display { background: #0a0a0a; border-radius: 10px; padding: 20px; min-height: 80px; border-left: 4px solid #6a00ff; text-align: left; line-height: 1.6; color: #eee; white-space: pre-wrap; margin: 10px 0; font-size: 18px; }
         .chord-highlight { color: #00ff88; font-weight: bold; font-family: monospace; background: #00ff8811; padding: 2px 4px; border-radius: 4px; }
         
         #piano-container { display: flex; justify-content: center; overflow-x: auto; padding: 20px 0; }
@@ -48,37 +52,39 @@ piano_lyrics_html = """
 <body>
 
     <div class="creator-tag">YHISSED JIMÉNEZ PRESENTA</div>
-    <div class="system-title">KORYM.PIANO: LYRICS & CHORDS PRO</div>
+    <div class="system-title">KORYM.PIANO STUDIO</div>
 
     <div class="main-container">
         <div class="input-area">
-            <textarea id="full-song" placeholder="Pega aquí la letra con acordes. Ejemplo:&#10;[C] Cielito [G] lindo [C] siempre..."></textarea>
+            <button id="unlock-btn" class="btn-unlock" onclick="desbloquearAudio()">🔓 1. ACTIVAR AUDIO</button>
+            <br><br>
+            <textarea id="full-song" placeholder="Pega aquí la letra con acordes entre corchetes.&#10;Ejemplo: [C] Hola [G] mundo [Am] musical..."></textarea>
             
             <div class="controls">
                 <div>
                     <span style="font-size: 12px;">TONALIDAD:</span>
                     <select id="transpose-val">
-                        <option value="0">Original</option>
-                        <option value="2">+1 Tono</option>
-                        <option value="-2">-1 Tono</option>
+                        <option value="0">Tono Original</option>
+                        <option value="2">+1 Tono (Re)</option>
+                        <option value="-2">-1 Tono (Sib)</option>
                         <option value="1">+1/2 Tono</option>
-                        <option value="-1">-1/2 Tono</option>
                     </select>
                 </div>
-                <button class="btn-play" onclick="reproducirMusica()">REPRODUCIR CANCIÓN</button>
+                <button id="play-btn" class="btn-play" onclick="reproducirMusica()" disabled style="opacity:0.5;">2. REPRODUCIR</button>
                 <button class="btn-stop" onclick="detenerTodo()">PARAR</button>
             </div>
         </div>
 
-        <div id="lyrics-display">La letra procesada aparecerá aquí mientras suena...</div>
+        <div id="lyrics-display">Esperando activación de audio...</div>
 
         <div id="piano-container"><div id="piano"></div></div>
     </div>
 
 <script>
-    const synth = new Tone.PolySynth(Tone.Synth).toDestination();
+    // Sintetizador con sonido más suave (FMSynth)
+    const synth = new Tone.PolySynth(Tone.FMSynth).toDestination();
     const notes = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
-    const chordsMap = { "M": [0, 4, 7], "m": [0, 3, 7], "7": [0, 4, 7, 10], "m7": [0, 3, 7, 10] };
+    const chordsMap = { "M": [0, 4, 7], "m": [0, 3, 7], "7": [0, 4, 7, 10] };
     const keysData = [];
 
     // Crear Piano
@@ -93,6 +99,19 @@ piano_lyrics_html = """
         });
     }
 
+    // FUNCIÓN CLAVE: Desbloquea el contexto de audio
+    async function desbloquearAudio() {
+        await Tone.start();
+        console.log("Audio listo");
+        document.getElementById('unlock-btn').innerText = "✅ AUDIO ONLINE";
+        document.getElementById('unlock-btn').classList.remove('btn-unlock');
+        document.getElementById('unlock-btn').style.background = "#444";
+        document.getElementById('unlock-btn').style.color = "#888";
+        document.getElementById('play-btn').disabled = false;
+        document.getElementById('play-btn').style.opacity = "1";
+        document.getElementById('lyrics-display').innerText = "KORYM.PIANO: Listo para procesar letra.";
+    }
+
     function detenerTodo() {
         Tone.Transport.stop();
         Tone.Transport.cancel();
@@ -100,22 +119,21 @@ piano_lyrics_html = """
     }
 
     async function reproducirMusica() {
-        await Tone.start();
-        detenerTodo();
+        if (Tone.context.state !== 'running') {
+            alert("Presiona el botón ACTIVAR AUDIO primero");
+            return;
+        }
         
+        detenerTodo();
         const rawText = document.getElementById('full-song').value;
-        const display = document.getElementById('lyrics-display');
         const shift = parseInt(document.getElementById('transpose-val').value);
         
-        // Resaltar acordes visualmente en la letra
-        let highlightedText = rawText.replace(/\\[(.*?)\\]/g, '<span class="chord-highlight">$1</span>');
-        display.innerHTML = highlightedText;
+        document.getElementById('lyrics-display').innerHTML = rawText.replace(/\\[(.*?)\\]/g, '<span class="chord-highlight">$1</span>');
 
-        // Extraer acordes para tocar
-        const matches = rawText.matchAll(/\\[(.*?)\\]/g);
+        const matches = [...rawText.matchAll(/\\[(.*?)\\]/g)];
         let time = 0;
 
-        for (const match of matches) {
+        matches.forEach((match) => {
             let chordName = match[1].toUpperCase();
             let root = chordName[0];
             if (chordName[1] === "#" || chordName[1] === "B") root = chordName.substring(0, 2).replace("BB", "A#");
@@ -130,17 +148,24 @@ piano_lyrics_html = """
                     let noteName = notes[(transIdx + inter) % 12];
                     tocar(noteName + "4", time);
                 });
-                time += 2; // Tiempo entre cada acorde de la letra
+                time += 1.8; // Velocidad de los acordes
             }
-        }
+        });
     }
 
     function tocar(n, time) {
+        // Disparar sonido
         synth.triggerAttackRelease(n, "2n", Tone.now() + time);
+        
+        // Disparar visualización
         const key = keysData.find(k => k.note === n);
         if(key) {
-            setTimeout(() => key.el.classList.add('active'), time * 1000);
-            setTimeout(() => key.el.classList.remove('active'), (time * 1000) + 800);
+            setTimeout(() => {
+                key.el.classList.add('active');
+            }, time * 1000);
+            setTimeout(() => {
+                key.el.classList.remove('active');
+            }, (time * 1000) + 800);
         }
     }
 </script>
