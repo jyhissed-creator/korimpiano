@@ -1,141 +1,143 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-# 1. Configuración de la App
-st.set_page_config(layout="wide", page_title="KORYM AI Piano Virtual")
+st.set_page_config(layout="wide", page_title="KORYM.PIANO Studio")
 
-# 2. Tu invento: IA de Oído y Cerebro Polifónico (Integrado en HTML/JS)
-# Esto permite que la IA corra en el celular del usuario (Costo $0 para ti)
-piano_ia_html = """
+st.markdown("""
+    <style>
+    .stApp { background-color: #050008; }
+    footer {visibility: hidden;}
+    iframe { border-radius: 20px; box-shadow: 0 0 35px #00ff8833; border: 1px solid #1a1a1a; }
+    </style>
+""", unsafe_allow_html=True)
+
+piano_studio_html = """
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>KORYM AI - Piano Virtual Real</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://unpkg.com/tone@14.8.49/build/Tone.js"></script>
     <style>
-        body { background: #0a0a0a; color: white; font-family: 'Segoe UI', sans-serif; margin: 0; overflow: hidden; }
-        .header { padding: 15px; background: #111; border-bottom: 4px solid #6a00ff; text-align: center; }
+        body { background: #050008; color: white; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 15px; text-align: center; }
+        .creator-brand { font-size: 11px; color: #6a00ff; letter-spacing: 4px; font-weight: bold; margin-bottom: 10px; }
+        .system-title { font-size: 26px; font-weight: 800; color: #fff; margin: 0 0 20px 0; }
         
-        #piano-container { 
-            position: relative; display: flex; justify-content: center; 
-            padding: 40px 10px; background: #000;
-        }
+        .main-panel { background: #000; border: 1px solid #00ff88; border-radius: 15px; padding: 20px; max-width: 800px; margin: 0 auto; }
+        textarea { width: 95%; height: 100px; background: #0a0a0a; color: #00ff88; border: 1px solid #333; border-radius: 8px; padding: 10px; font-size: 14px; margin-bottom: 10px; resize: none; outline: none; }
+        .controls { display: flex; gap: 10px; justify-content: center; margin-bottom: 10px; flex-wrap: wrap; }
         
-        #piano { display: flex; position: relative; height: 250px; }
-
-        .key-white { 
-            width: 45px; height: 100%; border: 1px solid #ccc; 
-            background: white; border-radius: 0 0 8px 8px; position: relative; z-index: 1;
-        }
-
-        .key-black { 
-            width: 28px; height: 150px; background: #222; 
-            margin-left: -14px; margin-right: -14px; z-index: 2; border-radius: 0 0 5px 5px;
-        }
-
-        /* Tu lógica de manos: Verde Izquierda / Azul Derecha */
-        .left-hand { background: #3cff00 !important; box-shadow: 0 0 30px #3cff00; } 
-        .right-hand { background: #00ccff !important; box-shadow: 0 0 30px #00ccff; } 
+        input[type="number"] { width: 60px; background: #111; border: 1px solid #6a00ff; color: white; padding: 8px; border-radius: 5px; }
+        button { padding: 12px 25px; background: #6a00ff; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        button:hover { background: #00ff88; color: #000; }
         
-        .note-name { 
-            position: absolute; bottom: 10px; width: 100%; text-align: center; 
-            color: #888; font-size: 11px; font-weight: bold; pointer-events: none;
-        }
-
-        .controls { display: flex; justify-content: center; gap: 10px; margin: 10px; flex-wrap: wrap; }
-        input, select { padding: 8px; border-radius: 5px; background: #222; color: white; border: 1px solid #444; }
+        #piano-container { display: flex; justify-content: center; overflow-x: auto; padding: 25px 0; }
+        #piano { display: flex; position: relative; height: 200px; }
+        
+        .key { position: relative; border: 1px solid #222; cursor: pointer; transition: 0.1s; }
+        .white { width: 42px; height: 100%; background: #fff; border-radius: 0 0 5px 5px; z-index: 1; }
+        .black { width: 28px; height: 120px; background: #222; margin-left: -14px; margin-right: -14px; z-index: 2; border-radius: 0 0 3px 3px; }
+        .active { background: #00ff88 !important; box-shadow: 0 0 30px #00ff88 !important; transform: translateY(5px); }
+        .label { position: absolute; bottom: 8px; width: 100%; text-align: center; color: #999; font-size: 9px; font-weight: bold; }
     </style>
 </head>
 <body>
 
-<div class="header">
-    <h2 style="margin:0;">🎹 KORYM AI PIANO</h2>
-    <div class="controls">
-        <input type="file" id="audioFile" accept="audio/*">
-        <select id="transpose">
-            <option value="-2">Bajar -2 (Re)</option>
-            <option value="0" selected>Tono Original</option>
-            <option value="2">Subir +2 (Mi)</option>
-        </select>
-    </div>
-    <audio id="player" controls style="width: 80%;"></audio>
-</div>
+    <div class="creator-brand">YHISSED JIMÉNEZ PRESENTA</div>
+    <div class="system-title">KORYM.PIANO STUDIO</div>
 
-<div id="piano-container">
-    <div id="piano"></div>
-</div>
+    <div class="main-panel">
+        <textarea id="song-input" placeholder="Pega aquí la letra con acordes o una secuencia (ej: C Am F G)"></textarea>
+        <div class="controls">
+            <div>
+                <label style="font-size:12px;">VELOCIDAD (BPM):</label>
+                <input type="number" id="bpm" value="120" min="40" max="220">
+            </div>
+            <button onclick="interpretarCancion()">REPRODUCIR MÚSICA</button>
+            <button onclick="detener()" style="background:#cc0000;">PARAR</button>
+        </div>
+        <div id="status" style="color:#00ff88; font-family:monospace; font-size:12px;">REGISTRO: KORYM.PIANO LISTO</div>
+    </div>
+
+    <div id="piano-container"><div id="piano"></div></div>
 
 <script>
-    // Tu mapa de frecuencias para que la IA "entienda" qué tecla brilla
-    const pianoLayout = [
-        {f: 261.63, n: "C", t: "W"}, {f: 277.18, n: "C#", t: "B"},
-        {f: 293.66, n: "D", t: "W"}, {f: 311.13, n: "D#", t: "B"},
-        {f: 329.63, n: "E", t: "W"}, {f: 349.23, n: "F", t: "W"}, 
-        {f: 369.99, n: "F#", t: "B"}, {f: 392.00, n: "G", t: "W"}, 
-        {f: 415.30, n: "G#", t: "B"}, {f: 440.00, n: "A", t: "W"}, 
-        {f: 466.16, n: "A#", t: "B"}, {f: 493.88, n: "B", t: "W"},
-        {f: 523.25, n: "C2", t: "W"}, {f: 554.37, n: "C#2", t: "B"},
-        {f: 587.33, n: "D2", t: "W"}, {f: 622.25, n: "D#2", t: "B"},
-        {f: 659.25, n: "E2", t: "W"}
-    ];
+    const synth = new Tone.PolySynth(Tone.Synth).toDestination();
+    const notes = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+    const chordsMap = { "M": [0, 4, 7], "m": [0, 3, 7], "7": [0, 4, 7, 10], "MAJ7": [0, 4, 7, 11] };
+    const keysData = [];
 
-    const pianoDiv = document.getElementById('piano');
-    const player = document.getElementById('player');
-    let keysElements = [];
+    // Generar Piano
+    const piano = document.getElementById('piano');
+    for (let oct = 3; oct <= 5; oct++) {
+        notes.forEach(n => {
+            const fullNote = n + oct;
+            const div = document.createElement('div');
+            div.className = `key ${n.includes("#") ? 'black' : 'white'}`;
+            div.innerHTML = `<span class="label">${fullNote}</span>`;
+            div.onmousedown = () => { playNote(fullNote); div.classList.add('active'); };
+            div.onmouseup = () => div.classList.remove('active');
+            piano.appendChild(div);
+            keysData.push({ el: div, note: fullNote, simple: n });
+        });
+    }
 
-    // Dibujar el teclado profesional
-    pianoLayout.forEach(note => {
-        const div = document.createElement('div');
-        div.className = note.t === "W" ? "key-white" : "key-black";
-        div.innerHTML = `<span class="note-name">${note.n}</span>`;
-        pianoDiv.appendChild(div);
-        keysElements.push({ el: div, freq: note.f });
-    });
+    function playNote(n, time = 0, duration = "4n") {
+        synth.triggerAttackRelease(n, duration, time);
+        const key = keysData.find(k => k.note === n);
+        if(key) {
+            setTimeout(() => key.el.classList.add('active'), time * 1000);
+            setTimeout(() => key.el.classList.remove('active'), (time * 1000) + 400);
+        }
+    }
 
-    document.getElementById('audioFile').onchange = function() {
-        player.src = URL.createObjectURL(this.files[0]);
-        initAI();
-    };
+    function detener() { Tone.Transport.stop(); Tone.Transport.cancel(); }
 
-    function initAI() {
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        const source = audioCtx.createMediaElementSource(player);
-        const analyser = audioCtx.createAnalyser();
-        analyser.fftSize = 4096;
+    async function interpretarCancion() {
+        await Tone.start();
+        detener();
+        
+        const text = document.getElementById('song-input').value.toUpperCase();
+        const bpm = document.getElementById('bpm').value;
+        Tone.Transport.bpm.value = bpm;
 
-        source.connect(analyser);
-        analyser.connect(audioCtx.destination);
+        // Extraer solo lo que parezca acordes (C, Am, F#, etc.)
+        const words = text.split(/[\\s\\n]+/);
+        let time = 0;
 
-        const dataArray = new Uint8Array(analyser.frequencyBinCount);
+        words.forEach(word => {
+            // Limpiar símbolos comunes en letras de canciones
+            let clean = word.replace(/[()[\\]]/g, "");
+            let root = "";
+            let type = "M";
 
-        function detect() {
-            analyser.getByteFrequencyData(dataArray);
-            const transp = parseInt(document.getElementById('transpose').value);
+            if (notes.includes(clean[0])) {
+                if (clean[1] === "#" || clean[1] === "B") {
+                    root = clean.substring(0, 2).replace("BB", "A#");
+                    type = clean.substring(2) || "M";
+                } else {
+                    root = clean[0];
+                    type = clean.substring(1) || "M";
+                }
+                if (type === "MIN" || type === "M") type = "m"; // Ajuste menor común
 
-            keysElements.forEach(k => k.el.classList.remove('left-hand', 'right-hand'));
-
-            for (let i = 0; i < dataArray.length; i++) {
-                if (dataArray[i] > 190) { // Sensibilidad del "oído"
-                    let detectedFreq = i * audioCtx.sampleRate / analyser.fftSize;
-                    let transposedFreq = detectedFreq * Math.pow(2, -transp / 12);
-
-                    let closest = keysElements.reduce((prev, curr) => 
-                        Math.abs(curr.freq - transposedFreq) < Math.abs(prev.freq - transposedFreq) ? curr : prev
-                    );
-
-                    // Lógica de separación de manos (Inventada por ti)
-                    if (closest.freq < 380) closest.el.classList.add('left-hand');
-                    else closest.el.classList.add('right-hand');
+                let rootIdx = notes.indexOf(root);
+                if (rootIdx !== -1) {
+                    let intervals = chordsMap[type] || chordsMap["M"];
+                    intervals.forEach(inter => {
+                        let noteName = notes[(rootIdx + inter) % 12];
+                        playNote(noteName + "4", time);
+                    });
+                    time += (60 / bpm) * 2; // Espacio entre acordes según ritmo
                 }
             }
-            requestAnimationFrame(detect);
-        }
-        player.onplay = () => { audioCtx.resume(); detect(); };
+        });
+        
+        document.getElementById('status').innerText = "KORYM.PIANO: Interpretando canción de Yhissed...";
     }
 </script>
 </body>
 </html>
 """
 
-# 3. Lanzar la app (Esto conecta tu HTML con Streamlit)
-components.html(piano_ia_html, height=800, scrolling=False)
+components.html(piano_studio_html, height=800, scrolling=False)
