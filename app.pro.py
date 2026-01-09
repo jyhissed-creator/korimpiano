@@ -1,4 +1,3 @@
-
 import streamlit as st
 import streamlit.components.v1 as components
 
@@ -7,8 +6,8 @@ st.set_page_config(layout="wide", page_title="KORIMPIANO&STUDY")
 st.markdown("""
     <style>
     .stApp { background-color: #050008; }
-    iframe { border-radius: 15px; border: 1px solid #333; }
-    .footer { text-align: center; color: #6a00ff; padding: 15px; font-weight: bold; font-family: sans-serif; }
+    iframe { border-radius: 20px; border: 2px solid #6a00ff; }
+    .footer { text-align: center; color: #6a00ff; padding: 20px; font-weight: bold; font-family: sans-serif; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -20,30 +19,28 @@ piano_html = """
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://unpkg.com/tone@14.8.49/build/Tone.js"></script>
     <style>
-        body { background: #050008; color: white; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 10px; text-align: center; overflow-x: hidden; }
-        .header { margin-bottom: 20px; border: 2px solid #6a00ff; border-radius: 15px; padding: 20px; background: rgba(106, 0, 255, 0.1); box-shadow: 0 0 15px rgba(106, 0, 255, 0.2); }
-        h1 { margin: 0; color: #00ff88; letter-spacing: 2px; text-shadow: 0 0 10px #00ff8844; font-size: 22px; }
-        .author { color: #aaa; font-size: 13px; margin-top: 5px; margin-bottom: 15px; }
+        body { background: #050008; color: white; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 10px; text-align: center; }
+        .header { margin-bottom: 20px; border: 2px solid #6a00ff; border-radius: 15px; padding: 20px; background: rgba(106, 0, 255, 0.1); }
+        h1 { margin: 0; color: #00ff88; letter-spacing: 2px; text-transform: uppercase; font-size: 20px; }
+        .author { color: #888; font-size: 12px; margin-top: 5px; }
         
-        .controls { display: flex; flex-direction: column; align-items: center; gap: 12px; }
-        input { width: 90%; max-width: 500px; padding: 15px; background: #111; color: #00ff88; border: 2px solid #6a00ff; border-radius: 10px; font-size: 18px; outline: none; text-align: center; }
-        button { width: 90%; max-width: 500px; padding: 15px; background: #00ff88; color: #000; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 16px; transition: 0.3s; }
-        button:hover { background: #6a00ff; color: white; box-shadow: 0 0 20px #6a00ff; }
+        .ui-container { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-top: 15px; }
+        input { width: 90%; max-width: 450px; padding: 15px; background: #000; color: #00ff88; border: 2px solid #6a00ff; border-radius: 10px; font-size: 18px; text-align: center; outline: none; }
+        button { width: 90%; max-width: 450px; padding: 15px; background: #00ff88; color: #000; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 16px; text-transform: uppercase; }
         
-        #status { color: #00ff88; font-family: monospace; margin-top: 15px; min-height: 24px; font-size: 14px; text-transform: uppercase; }
+        #status { color: #00ff88; font-family: monospace; margin-top: 10px; font-size: 14px; min-height: 20px; }
         
-        #piano-container { display: flex; justify-content: flex-start; overflow-x: auto; padding: 20px 5px; margin-top: 10px; -webkit-overflow-scrolling: touch; }
-        #piano { display: flex; position: relative; height: 220px; margin: 0 auto; }
+        #piano-scroll { display: flex; justify-content: flex-start; overflow-x: auto; padding: 20px 0; margin-top: 10px; border-top: 1px solid #333; }
+        #piano { display: flex; position: relative; height: 200px; margin: 0 auto; }
         
-        .key { position: relative; border: 1px solid #111; cursor: pointer; transition: 0.1s; user-select: none; }
-        .white { width: 45px; height: 100%; background: linear-gradient(to bottom, #eee 0%, #fff 100%); border-radius: 0 0 5px 5px; z-index: 1; }
-        .black { width: 30px; height: 130px; background: #222; margin-left: -15px; margin-right: -15px; z-index: 2; border-radius: 0 0 4px 4px; }
+        .key { position: relative; border: 1px solid #111; cursor: pointer; user-select: none; }
+        .white { width: 42px; height: 100%; background: white; border-radius: 0 0 5px 5px; z-index: 1; }
+        .black { width: 28px; height: 120px; background: #222; margin-left: -14px; margin-right: -14px; z-index: 2; border-radius: 0 0 3px 3px; }
         
-        .active { background: #00ff88 !important; box-shadow: 0 0 25px #00ff88 !important; transform: translateY(4px); }
-        .active-bass { background: #ff00ff !important; box-shadow: 0 0 25px #ff00ff !important; transform: translateY(4px); }
+        .active { background: #00ff88 !important; box-shadow: 0 0 20px #00ff88; z-index: 3; }
+        .active-bass { background: #ff00ff !important; box-shadow: 0 0 20px #ff00ff; z-index: 3; }
         
-        .label { position: absolute; bottom: 8px; width: 100%; text-align: center; font-size: 10px; font-weight: bold; color: #999; pointer-events: none; }
-        .black .label { color: #666; bottom: 5px; }
+        .label { position: absolute; bottom: 5px; width: 100%; text-align: center; font-size: 9px; font-weight: bold; color: #aaa; pointer-events: none; }
     </style>
 </head>
 <body>
@@ -51,132 +48,124 @@ piano_html = """
     <div class="header">
         <h1>🎹 KORIMPIANO & STUDY</h1>
         <p class="author">Creado por: <b>Yhissed Jiménez</b></p>
-        <div class="controls">
-            <input type="text" id="orden" placeholder="C, Am, C/G, C-E-G o Am F C G">
-            <button onclick="interpretar()">REPRODUCIR</button>
+        <div class="ui-container">
+            <input type="text" id="input" placeholder="Ej: C-E-G (melodía) o C/G (acorde/bajo) o Am F C G">
+            <button onclick="ejecutar()">REPRODUCIR</button>
         </div>
-        <div id="status">Listo para sonar</div>
+        <div id="status">Listo</div>
     </div>
 
-    <div id="piano-container">
+    <div id="piano-scroll">
         <div id="piano"></div>
     </div>
 
 <script>
-    const synth = new Tone.PolySynth(Tone.Synth, {
-        oscillator: { type: "triangle" },
-        envelope: { attack: 0.05, release: 1 }
-    }).toDestination();
-
+    const synth = new Tone.PolySynth(Tone.Sampler).toDestination();
     const notesBase = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
-    const flatsMap = { "DB": "C#", "EB": "D#", "GB": "F#", "AB": "G#", "BB": "A#" };
-    const keysData = [];
+    const pianoKeys = [];
 
-    // Generar piano de Octava 2 a 5
-    const piano = document.getElementById('piano');
+    // Dibujar Piano (Octavas 2 a 5)
+    const pianoDiv = document.getElementById('piano');
     for (let oct = 2; oct <= 5; oct++) {
         notesBase.forEach(n => {
-            const fullNote = n + oct;
             const isBlack = n.includes("#");
-            const div = document.createElement('div');
-            div.className = `key ${isBlack ? 'black' : 'white'}`;
-            div.dataset.note = fullNote;
-            div.innerHTML = `<span class="label">${fullNote}</span>`;
-            
-            div.onmousedown = () => { playNote(fullNote); div.classList.add('active'); };
-            div.onmouseup = () => div.classList.remove('active');
-            piano.appendChild(div);
-            keysData.push({ el: div, note: fullNote, simple: n, oct: oct });
+            const key = document.createElement('div');
+            key.className = `key ${isBlack ? 'black' : 'white'}`;
+            key.dataset.note = n + oct;
+            key.innerHTML = `<span class="label">${n}${oct}</span>`;
+            key.onmousedown = () => { play(n+oct); key.classList.add('active'); };
+            key.onmouseup = () => key.classList.remove('active');
+            pianoDiv.appendChild(key);
+            pianoKeys.push({ el: key, note: n, oct: oct });
         });
     }
 
-    function playNote(note) {
+    function play(note) {
         Tone.start();
-        synth.triggerAttackRelease(note, "4n");
+        synth.triggerAttackRelease(note, "2n");
     }
 
-    function highlight(simpleNote, oct, className) {
-        const key = keysData.find(k => k.simple === simpleNote && k.oct === oct);
-        if (key) {
-            key.el.classList.add(className);
-            setTimeout(() => key.el.classList.remove(className), 600);
+    function highlight(note, oct, type) {
+        const k = pianoKeys.find(x => x.note === note && x.oct === oct);
+        if (k) {
+            const cls = type === 'bass' ? 'active-bass' : 'active';
+            k.el.classList.add(cls);
+            setTimeout(() => k.el.classList.remove(cls), 800);
         }
     }
 
-    function normalizeNote(n) {
-        let note = n.toUpperCase().trim();
-        for (let flat in flatsMap) { note = note.replace(flat, flatsMap[flat]); }
-        return note;
+    const chordsLib = {
+        "m": [0, 3, 7], "": [0, 4, 7], "7": [0, 4, 7, 10], "maj7": [0, 4, 7, 11]
+    };
+
+    function fixNote(n) {
+        return n.toUpperCase().replace("BB", "A#").replace("EB", "D#").replace("AB", "G#").replace("DB", "C#").replace("GB", "F#").trim();
     }
 
-    async function interpretar() {
-        const rawInput = document.getElementById('orden').value.trim();
+    async function ejecutar() {
+        const val = document.getElementById('input').value.trim();
         const status = document.getElementById('status');
-        if (!rawInput) return;
+        if (!val) return;
 
-        // Separar por espacios si es una progresión (Ej: C Am F G)
-        const parts = rawInput.split(/\s+/);
-        
-        for (let item of parts) {
-            let notesToPlay = [];
-            status.innerText = "Interpretando: " + item;
+        // Limpiar el estado anterior
+        const segments = val.split(/\s+/); // Separar por espacios (progresiones)
 
-            // CASO 1: Notas individuales con guion (Ej: C-E-G)
-            if (item.includes("-")) {
-                const notes = item.split("-");
+        for (let seg of segments) {
+            status.innerText = "Tocando: " + seg;
+            let toPlay = [];
+
+            // 1. MELODÍA (Notas con guion C-E-G)
+            if (seg.includes("-")) {
+                const notes = seg.split("-");
                 notes.forEach(n => {
-                    const norm = normalizeNote(n);
-                    notesToPlay.push(norm + "4");
-                    highlight(norm, 4, 'active');
+                    let fn = fixNote(n);
+                    toPlay.push(fn + "4");
+                    highlight(fn, 4, 'note');
                 });
-            } 
-            // CASO 2: Acordes con Bajos (Ej: C/G)
-            else if (item.includes("/")) {
-                const [chord, bass] = item.split("/");
-                const normBass = normalizeNote(bass);
-                notesToPlay.push(normBass + "2");
-                highlight(normBass, 2, 'active-bass');
-                
-                // Extraer raíz del acorde
-                let root = normalizeNote(chord);
-                if (root.endsWith("M") || root.endsWith("m")) root = root.slice(0, -1);
-                
-                notesToPlay.push(root + "4");
-                highlight(root, 4, 'active');
             }
-            // CASO 3: Acorde o Nota simple (Ej: Am o C)
+            // 2. ACORDE CON BAJO (C/G)
+            else if (seg.includes("/")) {
+                const [chord, bass] = seg.split("/");
+                const fb = fixNote(bass);
+                const fc = fixNote(chord);
+                
+                // Bajo en octava grave
+                toPlay.push(fb + "2");
+                highlight(fb, 2, 'bass');
+
+                // Acorde en octava media
+                let root = fc.replace(/M|m|7/g, "");
+                let type = fc.includes("m") ? "m" : "";
+                let rootIdx = notesBase.indexOf(root);
+                chordsLib[type].forEach(interval => {
+                    let n = notesBase[(rootIdx + interval) % 12];
+                    toPlay.push(n + "4");
+                    highlight(n, 4, 'note');
+                });
+            }
+            // 3. ACORDE O NOTA SIMPLE
             else {
-                const norm = normalizeNote(item);
-                // Si es acorde menor (termina en M o m)
-                let root = norm;
-                if (norm.length > 1 && (norm.endsWith("M") || norm.endsWith("m"))) {
-                    root = norm.slice(0, -1);
-                }
+                let fn = fixNote(seg);
+                let root = fn.replace(/M|m|7/g, "");
+                let type = fn.includes("m") ? "m" : (notesBase.includes(fn) ? null : "");
                 
-                // Para simplificar, si es acorde solo tocamos Triada Básica
-                notesToPlay.push(root + "4");
-                highlight(root, 4, 'active');
-                
-                // Añadir tercera y quinta automáticamente si parece acorde
-                const rootIdx = notesBase.indexOf(root);
-                if (rootIdx !== -1) {
-                   const isMinor = norm.includes("M"); 
-                   const thirdIdx = (rootIdx + (isMinor ? 3 : 4)) % 12;
-                   const fifthIdx = (rootIdx + 7) % 12;
-                   notesToPlay.push(notesBase[thirdIdx] + "4");
-                   notesToPlay.push(notesBase[fifthIdx] + "4");
-                   highlight(notesBase[thirdIdx], 4, 'active');
-                   highlight(notesBase[fifthIdx], 4, 'active');
+                if (type === null) { // Es nota sola
+                    toPlay.push(fn + "4");
+                    highlight(fn, 4, 'note');
+                } else { // Es acorde
+                    let rootIdx = notesBase.indexOf(root);
+                    chordsLib[type].forEach(interval => {
+                        let n = notesBase[(rootIdx + interval) % 12];
+                        toPlay.push(n + "4");
+                        highlight(n, 4, 'note');
+                    });
                 }
             }
 
-            if (notesToPlay.length > 0) {
-                synth.triggerAttackRelease(notesToPlay, "2n");
-            }
-            
-            if (parts.length > 1) await new Promise(r => setTimeout(r, 1200));
+            if (toPlay.length > 0) synth.triggerAttackRelease(toPlay, "2n");
+            if (segments.length > 1) await new Promise(r => setTimeout(r, 1200));
         }
-        status.innerText = "Fin de la secuencia.";
+        status.innerText = "Fin.";
     }
 </script>
 </body>
